@@ -53,7 +53,25 @@ Zahlst du ein Hostel für 7 Nächte mit 140 € auf einmal, trägst du unter
 „Mehr Angaben" den Zeitraum ein. Die App rechnet dann an jedem dieser sieben Tage
 20 € gegen dein Tagesbudget, statt dir einen Tag komplett zu zerschießen.
 
-**4. Prognose statt nur Kontostand.**
+**4. Rücklagen kommen oben weg.**
+Ein Flug, ein Visum, ein Tauchkurs – Dinge, die im Reisezeitraum sicher anfallen,
+aber nichts mit dem Alltag zu tun haben. Trägst du sie unter *Einstellungen →
+Rücklagen* ein, werden sie vom Gesamtbudget abgezogen, **bevor** durch die Tage
+geteilt wird:
+
+    5.000 € − 700 € Flug = 4.300 € ÷ 100 Tage = 43 € pro Tag  (statt 50 €)
+
+Das Geld kann dir also gar nicht erst versehentlich im Tagesbudget durch die
+Finger rinnen. Wichtig: eine Rücklage trägst du **nicht** zusätzlich als normale
+Ausgabe ein – sonst zählt der Betrag doppelt. Ist der Flug bezahlt, setzt du in
+der Zeile einfach den Haken. Am Tagesbudget ändert das nichts (das Geld ist so
+oder so weg), aber du siehst, was noch bevorsteht, und der Betrag taucht in der
+Kategorie-Auswertung auf.
+
+Kostet der Flug am Ende 743 € statt 700 €, überschreibst du den Betrag in der
+Zeile. Das Tagesbudget für die restlichen Tage passt sich sofort an.
+
+**5. Prognose statt nur Kontostand.**
 Aus deinem Schnitt der abgeschlossenen Tage rechnet die App hoch, wann dein Geld
 alle wäre. Liegt das vor dem Reiseende, warnt sie – liegt es danach, sagt sie dir,
 wie viele Tage länger du reisen könntest.
@@ -85,7 +103,7 @@ tauschen kann, ohne alles anzufassen:
 | Datei | Aufgabe |
 |---|---|
 | `js/store.js` | Speichern und Laden. Die einzige Stelle, die weiß, **wo** die Daten liegen. |
-| `js/budget.js` | Rechnen. Tagesbudget, Verteilung auf Tage, Prognose, Abrechnung. Fasst nie den Bildschirm an. |
+| `js/budget.js` | Rechnen. Tagesbudget, Rücklagen, Verteilung auf Tage, Prognose, Abrechnung. Fasst nie den Bildschirm an. |
 | `js/app.js` | Oberfläche. Holt Daten, lässt rechnen, schreibt das Ergebnis auf den Bildschirm. |
 
 `css/style.css` ist nur das Aussehen; alle Farben stehen als Variablen ganz oben.

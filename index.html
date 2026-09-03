@@ -109,6 +109,11 @@
       <div class="zahlen-gitter" id="prognose-zahlen"></div>
     </div>
 
+    <div class="karte" id="karte-ruecklagen" hidden>
+      <div class="kachel-label">Zurückgelegt</div>
+      <div id="ruecklagen-liste" class="ruecklagen"></div>
+    </div>
+
     <div class="karte">
       <div class="kachel-label">Wofür du dein Geld ausgibst</div>
       <div id="kategorie-liste" class="kat-liste"></div>
@@ -160,6 +165,22 @@
           <label class="feld-label" for="e-waehrung">Währung</label>
           <input id="e-waehrung" type="text" maxlength="4" placeholder="€">
         </div>
+      </div>
+    </div>
+
+    <div class="karte">
+      <div class="kachel-label">Rücklagen</div>
+      <p class="hinweis mini">Geld für etwas Bestimmtes, das noch kommt – ein Flug, ein
+        Visum, ein Tauchkurs. Der Betrag wird vom Budget abgezogen, <b>bevor</b> durch die
+        Tage geteilt wird, und taucht deshalb nie in deinem Tagesbudget auf.</p>
+      <div id="e-ruecklagen" class="ruecklagen"></div>
+      <div class="ruecklage-neu">
+        <input id="e-r-name" type="text" placeholder="z.B. Flug Südamerika" autocomplete="off">
+        <div class="zwei-spalten">
+          <input id="e-r-betrag" type="text" inputmode="decimal" placeholder="700">
+          <select id="e-r-kategorie"></select>
+        </div>
+        <button type="button" class="knopf klein breit" id="e-r-hinzu">Rücklage anlegen</button>
       </div>
     </div>
 

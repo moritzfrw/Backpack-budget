@@ -46,7 +46,10 @@ const Store = (function () {
       },
       personen: [{ id: ich, name: 'Ich' }],
       ichBinId: ich,
-      ausgaben: []
+      ausgaben: [],
+      /* Geld, das fuer etwas Bestimmtes weggelegt wird und deshalb
+         nie im Tagesbudget auftaucht – z.B. ein Flug. */
+      ruecklagen: []
     };
   }
 
@@ -77,6 +80,7 @@ const Store = (function () {
     d.reise    = Object.assign(s.reise, d.reise || {});
     d.personen = Array.isArray(d.personen) && d.personen.length ? d.personen : s.personen;
     d.ausgaben = Array.isArray(d.ausgaben) ? d.ausgaben : [];
+    d.ruecklagen = Array.isArray(d.ruecklagen) ? d.ruecklagen : [];
 
     /* Version 1 kannte nur ein von Hand gesetztes Tagesbudget.
        Daraus machen wir ein Gesamtbudget. */
@@ -100,6 +104,13 @@ const Store = (function () {
       if (!gueltigePersonen.has(a.bezahltVon)) a.bezahltVon = d.ichBinId;
       a.geteiltMit = (a.geteiltMit || []).filter(id => gueltigePersonen.has(id));
       if (!a.geteiltMit.length) a.geteiltMit = [d.ichBinId];
+    });
+
+    d.ruecklagen.forEach(r => {
+      r.betrag = Number(r.betrag) || 0;
+      r.bezahlt = !!r.bezahlt;
+      if (ALTE_KATEGORIEN[r.kategorie]) r.kategorie = ALTE_KATEGORIEN[r.kategorie];
+      if (!gueltigeKategorien.has(r.kategorie)) r.kategorie = 'sonstiges';
     });
 
     d.version = VERSION;

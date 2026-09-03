@@ -15,7 +15,11 @@
       liegt mit je 20 EUR auf sieben Tagen. Dadurch reisst eine
       grosse Buchung nicht ein Loch in einen einzelnen Tag.
 
-   3. Das Tagesbudget wird jeden Tag neu berechnet:
+   3. Ruecklagen werden vom Gesamtbudget abgezogen, BEVOR durch die
+      Tage geteilt wird. Wer 700 EUR fuer einen Flug weglegt, hat sie
+      nie im Tagesbudget zur Verfuegung – auch nicht versehentlich.
+
+   4. Das Tagesbudget wird jeden Tag neu berechnet:
       (was vom Gesamtbudget noch da ist) / (Tage, die noch kommen).
       Gibst du zu viel aus, sinkt die Zahl von morgen. Sparst du,
       steigt sie. Deshalb muss nichts von Hand nachjustiert werden.
@@ -99,6 +103,12 @@ const Budget = (function () {
     const gesamtTage = ende ? tageZwischen(start, ende) : null;
     const eingerichtet = gesamtbudget > 0 && gesamtTage > 0;
 
+    /* Was weggelegt ist, steht dem Alltag nicht zur Verfuegung –
+       egal ob schon bezahlt oder noch bevorstehend. */
+    const ruecklagen = zustand.ruecklagen || [];
+    const ruecklagenSumme = ruecklagen.reduce((s, r) => s + (Number(r.betrag) || 0), 0);
+    const alltagsbudget = gesamtbudget - ruecklagenSumme;
+
     const summen = tagesSummen(zustand.ausgaben, zustand.ichBinId);
 
     let vorHeute = 0, heuteAusgegeben = 0, gesamtAusgegeben = 0;
@@ -110,13 +120,15 @@ const Budget = (function () {
 
     const p = {
       eingerichtet, gesamtbudget, start, ende, heute, summen,
+      ruecklagen, ruecklagenSumme, alltagsbudget,
+      ruecklagenZuHoch: eingerichtet && alltagsbudget <= 0,
       vorHeute, heuteAusgegeben, gesamtAusgegeben,
-      uebrig: gesamtbudget - gesamtAusgegeben
+      uebrig: alltagsbudget - gesamtAusgegeben
     };
     if (!eingerichtet) { p.status = 'unbekannt'; return p; }
 
     p.gesamtTage = gesamtTage;
-    p.tagesbudgetPlan = gesamtbudget / gesamtTage;
+    p.tagesbudgetPlan = alltagsbudget / gesamtTage;
     p.status = heute < start ? 'vorher' : (heute > ende ? 'beendet' : 'laufend');
     p.tagNummer = Math.min(gesamtTage, Math.max(1, tageZwischen(start, heute)));
 
@@ -124,7 +136,7 @@ const Budget = (function () {
     const abTag = p.status === 'vorher' ? start : heute;
 
     p.restTage = p.status === 'beendet' ? 0 : tageZwischen(abTag, ende);
-    p.restbudget = gesamtbudget - vorHeute;
+    p.restbudget = alltagsbudget - vorHeute;
 
     /* Das ist die Zahl, um die sich alles dreht. */
     p.heutigesBudget = p.restTage > 0 ? p.restbudget / p.restTage : 0;
@@ -159,12 +171,19 @@ const Budget = (function () {
 
   /* ---------- Auswertung nach Kategorie ---------- */
 
-  function proKategorie(ausgaben, personId) {
+  /* Bezahlte Ruecklagen sind echtes ausgegebenes Geld und gehoeren
+     deshalb in die Auswertung. Noch offene sind nur geplant und
+     bleiben draussen. */
+  function proKategorie(ausgaben, personId, ruecklagen) {
     const summe = new Map();
     ausgaben.forEach(a => {
       const wert = anteil(a, personId);
       if (wert <= 0) return;
       summe.set(a.kategorie, (summe.get(a.kategorie) || 0) + wert);
+    });
+    (ruecklagen || []).forEach(r => {
+      if (!r.bezahlt || r.betrag <= 0) return;
+      summe.set(r.kategorie, (summe.get(r.kategorie) || 0) + r.betrag);
     });
     const gesamt = [...summe.values()].reduce((s, x) => s + x, 0);
     const zeilen = [...summe.entries()]

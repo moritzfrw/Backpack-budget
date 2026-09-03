@@ -381,8 +381,28 @@
 
   function zeichneAuswertung(p) {
     zeichnePrognose(p);
+    zeichneRuecklagenUebersicht();
     zeichneKategorien();
     zeichneReisekasse();
+  }
+
+  /* Nur-Lese-Liste der Rücklagen. Geändert wird in den Einstellungen. */
+  function zeichneRuecklagenUebersicht() {
+    const karte = $('karte-ruecklagen');
+    karte.hidden = !zustand.ruecklagen.length;
+    if (karte.hidden) return;
+
+    const liste = $('ruecklagen-liste');
+    liste.textContent = '';
+    zustand.ruecklagen.forEach(r => {
+      const zeile = el('div', 'ruecklage nur-lesen');
+      zeile.append(el('span', null, Store.kategorie(r.kategorie).icon));
+      const text = el('div');
+      text.append(el('div', 'r-name' + (r.bezahlt ? ' bezahlt' : ''), r.name));
+      text.append(el('div', 'r-sub', r.bezahlt ? 'bezahlt' : 'noch offen'));
+      zeile.append(text, el('div', 'posten-betrag', geld(r.betrag)));
+      liste.append(zeile);
+    });
   }
 
   function zeichnePrognose(p) {
@@ -414,12 +434,17 @@
     const gitter = $('prognose-zahlen');
     gitter.textContent = '';
     if (!p.eingerichtet) return;
-    [
-      ['Gesamtbudget', geld(p.gesamtbudget)],
-      ['Schon ausgegeben', geld(p.gesamtAusgegeben)],
-      ['Übrig', geld(p.uebrig)],
-      ['Schnitt bisher', p.abgeschlosseneTage > 0 ? geld(p.schnitt) + ' / Tag' : '–']
-    ].forEach(([label, text]) => {
+
+    const kacheln = [['Gesamtbudget', geld(p.gesamtbudget)]];
+    if (p.ruecklagenSumme > 0) {
+      kacheln.push(['Zurückgelegt', '− ' + geld(p.ruecklagenSumme)]);
+      kacheln.push(['Fürs Tägliche', geld(p.alltagsbudget)]);
+    }
+    kacheln.push(['Schon ausgegeben', geld(p.gesamtAusgegeben)]);
+    kacheln.push(['Übrig', geld(p.uebrig)]);
+    kacheln.push(['Schnitt bisher', p.abgeschlosseneTage > 0 ? geld(p.schnitt) + ' / Tag' : '–']);
+
+    kacheln.forEach(([label, text]) => {
       const feld = el('div', 'zahl');
       feld.append(el('div', 'zahl-label', label), el('div', 'zahl-wert', text));
       gitter.append(feld);
@@ -429,7 +454,7 @@
   function zeichneKategorien() {
     const behaelter = $('kategorie-liste');
     behaelter.textContent = '';
-    const zeilen = Budget.proKategorie(zustand.ausgaben, zustand.ichBinId);
+    const zeilen = Budget.proKategorie(zustand.ausgaben, zustand.ichBinId, zustand.ruecklagen);
 
     if (!zeilen.length) {
       behaelter.append(el('div', 'leer', 'Sobald du etwas einträgst, siehst du hier die Aufteilung.'));
@@ -499,15 +524,25 @@
     const dauer = Budget.tageZwischen(zustand.reise.start, zustand.reise.ende);
     $('e-dauer').value = dauer > 0 ? dauer : '';
 
-    if (p.eingerichtet) {
+    if (p.ruecklagenZuHoch) {
+      $('e-ergebnis').textContent = 'Rücklagen zu hoch';
+      $('e-ergebnis-sub').textContent = 'Deine Rücklagen von ' + geld(p.ruecklagenSumme) +
+        ' verbrauchen dein ganzes Budget von ' + geld(p.gesamtbudget) +
+        '. Für den Alltag bleibt nichts übrig.';
+    } else if (p.eingerichtet) {
       $('e-ergebnis').textContent = geld(p.tagesbudgetPlan) + ' pro Tag';
-      $('e-ergebnis-sub').textContent = geld(p.gesamtbudget) + ' geteilt durch ' +
+      $('e-ergebnis-sub').textContent = (p.ruecklagenSumme > 0
+        ? geld(p.gesamtbudget) + ' minus ' + geld(p.ruecklagenSumme) + ' Rücklagen = ' +
+          geld(p.alltagsbudget) + ', geteilt durch '
+        : geld(p.gesamtbudget) + ' geteilt durch ') +
         tage(p.gesamtTage) + '. Die App passt diese Zahl täglich an das an, ' +
         'was du wirklich ausgibst.';
     } else {
       $('e-ergebnis').textContent = '–';
       $('e-ergebnis-sub').textContent = 'Trag oben Zeitraum und Budget ein.';
     }
+
+    zeichneRuecklagenFelder();
 
     const personen = $('e-personen');
     personen.textContent = '';
@@ -532,6 +567,62 @@
       ich.append(o);
     });
     ich.value = zustand.ichBinId;
+  }
+
+  function zeichneRuecklagenFelder() {
+    const liste = $('e-ruecklagen');
+    liste.textContent = '';
+
+    zustand.ruecklagen.forEach(r => {
+      const zeile = el('div', 'ruecklage');
+
+      /* Haken = bereits bezahlt. Aendert nichts am Tagesbudget –
+         das Geld ist so oder so weg –, macht aber sichtbar, was
+         noch bevorsteht, und zaehlt in die Kategorie-Auswertung. */
+      const haken = document.createElement('input');
+      haken.type = 'checkbox';
+      haken.checked = r.bezahlt;
+      haken.title = 'schon bezahlt';
+      haken.onchange = () => { r.bezahlt = haken.checked; speichern(); };
+
+      const text = el('div');
+      text.append(el('div', 'r-name' + (r.bezahlt ? ' bezahlt' : ''), r.name));
+      /* Ob bezahlt, sagen schon der Haken und der Durchstrich –
+         das muss hier nicht nochmal stehen und umbrechen. */
+      text.append(el('div', 'r-sub', Store.kategorie(r.kategorie).name));
+
+      const betrag = document.createElement('input');
+      betrag.type = 'text';
+      betrag.className = 'r-betrag';
+      betrag.inputMode = 'decimal';
+      betrag.value = String(r.betrag).replace('.', ',');
+      betrag.onchange = () => {
+        r.betrag = betragLesen(betrag.value) || 0;
+        speichern();
+      };
+
+      const weg = el('button', 'r-weg', '×');
+      weg.type = 'button';
+      weg.title = r.name + ' entfernen';
+      weg.onclick = () => {
+        if (!confirm('Rücklage „' + r.name + '" entfernen? Der Betrag steht dann wieder fürs Tagesbudget zur Verfügung.')) return;
+        zustand.ruecklagen = zustand.ruecklagen.filter(x => x.id !== r.id);
+        speichern();
+      };
+
+      zeile.append(haken, text, betrag, weg);
+      liste.append(zeile);
+    });
+
+    const auswahl = $('e-r-kategorie');
+    if (!auswahl.children.length) {
+      Store.KATEGORIEN.forEach(k => {
+        const o = el('option', null, k.icon + '  ' + k.name);
+        o.value = k.id;
+        auswahl.append(o);
+      });
+      auswahl.value = 'fortbewegung';
+    }
   }
 
   function personEntfernen(id) {
@@ -672,6 +763,25 @@
   };
 
   $('e-ich').onchange = () => { zustand.ichBinId = $('e-ich').value; speichern(); };
+
+  $('e-r-hinzu').onclick = () => {
+    const name = $('e-r-name').value.trim();
+    const betrag = betragLesen($('e-r-betrag').value);
+    if (!name) { melden('Gib der Rücklage einen Namen'); $('e-r-name').focus(); return; }
+    if (!betrag || betrag <= 0) { melden('Bitte einen Betrag eintragen'); $('e-r-betrag').focus(); return; }
+
+    zustand.ruecklagen.push({
+      id: Store.neueId(), name, betrag,
+      kategorie: $('e-r-kategorie').value, bezahlt: false
+    });
+    $('e-r-name').value = '';
+    $('e-r-betrag').value = '';
+    speichern();
+    melden(geld(betrag) + ' für „' + name + '" zurückgelegt');
+  };
+  $('e-r-betrag').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); $('e-r-hinzu').click(); }
+  });
 
   $('e-person-hinzu').onclick = () => {
     const name = $('e-neue-person').value.trim();
