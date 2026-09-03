@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Backpack Budget</title>
+<meta name="theme-color" content="#0b1220">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="kopf">
+  <div class="kopf-zeile">
+    <span class="logo">◈</span>
+    <div>
+      <div class="kopf-titel" id="kopf-reise">Meine Reise</div>
+      <div class="kopf-sub" id="kopf-person">–</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ---------- ÜBERSICHT ---------- -->
+  <section class="view" id="view-uebersicht">
+
+    <div class="karte heute">
+      <div class="heute-label">Heute ausgegeben (dein Anteil)</div>
+      <div class="heute-betrag" id="heute-betrag">0</div>
+      <div class="balken"><div class="balken-fuell" id="heute-balken"></div></div>
+      <div class="heute-fuss" id="heute-fuss">Kein Tagesbudget gesetzt</div>
+    </div>
+
+    <div class="kachel-reihe">
+      <div class="karte kachel">
+        <div class="kachel-label">Diese Woche</div>
+        <div class="kachel-wert" id="woche-betrag">0</div>
+        <div class="kachel-sub" id="woche-sub">–</div>
+      </div>
+      <div class="karte kachel">
+        <div class="kachel-label">Reise gesamt</div>
+        <div class="kachel-wert" id="gesamt-betrag">0</div>
+        <div class="kachel-sub" id="gesamt-sub">–</div>
+      </div>
+    </div>
+
+    <div class="karte" id="karte-reichweite">
+      <div class="kachel-label">Reichweite</div>
+      <div class="reichweite-wert" id="reichweite-wert">–</div>
+      <div class="kachel-sub" id="reichweite-sub"></div>
+    </div>
+
+    <div class="karte">
+      <div class="kachel-label">Wohin dein Geld geht</div>
+      <div id="kategorie-liste" class="kat-liste"></div>
+    </div>
+
+  </section>
+
+  <!-- ---------- AUSGABEN ---------- -->
+  <section class="view" id="view-ausgaben" hidden>
+
+    <form class="karte formular" id="formular">
+      <input type="hidden" id="f-id">
+
+      <label class="feld-label" for="f-betrag">Betrag</label>
+      <div class="betrag-zeile">
+        <input class="betrag-eingabe" id="f-betrag" type="text" inputmode="decimal"
+               placeholder="0,00" autocomplete="off" required>
+        <span class="waehrung" id="f-waehrung">€</span>
+      </div>
+
+      <label class="feld-label">Kategorie</label>
+      <div class="chips" id="f-kategorien"></div>
+
+      <div class="zwei-spalten">
+        <div>
+          <label class="feld-label" for="f-datum">Datum</label>
+          <input id="f-datum" type="date" required>
+        </div>
+        <div>
+          <label class="feld-label" for="f-bezahlt">Bezahlt von</label>
+          <select id="f-bezahlt"></select>
+        </div>
+      </div>
+
+      <label class="feld-label">Geteilt mit</label>
+      <div class="chips" id="f-geteilt"></div>
+
+      <label class="feld-label" for="f-notiz">Notiz (optional)</label>
+      <input id="f-notiz" type="text" placeholder="z.B. Nachtbus nach Hanoi" autocomplete="off">
+
+      <div class="formular-knoepfe">
+        <button type="submit" class="knopf primaer" id="f-speichern">Ausgabe eintragen</button>
+        <button type="button" class="knopf still" id="f-abbrechen" hidden>Abbrechen</button>
+        <button type="button" class="knopf loeschen" id="f-loeschen" hidden>Löschen</button>
+      </div>
+    </form>
+
+    <div class="listen-kopf">
+      <span id="ausgaben-anzahl">Noch keine Ausgaben</span>
+    </div>
+    <div id="ausgaben-liste"></div>
+
+  </section>
+
+  <!-- ---------- ABRECHNUNG ---------- -->
+  <section class="view" id="view-abrechnung" hidden>
+
+    <div class="karte">
+      <div class="kachel-label">Stand der Reisekasse</div>
+      <div id="salden-liste" class="salden"></div>
+    </div>
+
+    <div class="karte">
+      <div class="kachel-label">Ausgleich – wer zahlt wem</div>
+      <div id="ausgleich-liste" class="ausgleich"></div>
+    </div>
+
+  </section>
+
+  <!-- ---------- EINSTELLUNGEN ---------- -->
+  <section class="view" id="view-einstellungen" hidden>
+
+    <div class="karte">
+      <div class="kachel-label">Reise</div>
+      <label class="feld-label" for="e-reise">Name</label>
+      <input id="e-reise" type="text" placeholder="Südostasien 2026">
+
+      <div class="zwei-spalten">
+        <div>
+          <label class="feld-label" for="e-start">Start</label>
+          <input id="e-start" type="date">
+        </div>
+        <div>
+          <label class="feld-label" for="e-ende">Ende</label>
+          <input id="e-ende" type="date">
+        </div>
+      </div>
+
+      <div class="zwei-spalten">
+        <div>
+          <label class="feld-label" for="e-budget">Tagesbudget pro Person</label>
+          <input id="e-budget" type="text" inputmode="decimal" placeholder="40">
+        </div>
+        <div>
+          <label class="feld-label" for="e-waehrung">Währung</label>
+          <input id="e-waehrung" type="text" maxlength="4" placeholder="€">
+        </div>
+      </div>
+    </div>
+
+    <div class="karte">
+      <div class="kachel-label">Mitreisende</div>
+      <div id="e-personen" class="personen"></div>
+      <div class="zeile-eingabe">
+        <input id="e-neue-person" type="text" placeholder="Name" autocomplete="off">
+        <button type="button" class="knopf klein" id="e-person-hinzu">Hinzufügen</button>
+      </div>
+      <label class="feld-label" for="e-ich">Das bin ich</label>
+      <select id="e-ich"></select>
+    </div>
+
+    <div class="karte">
+      <div class="kachel-label">Daten</div>
+      <p class="hinweis">Alles wird nur in diesem Browser gespeichert. Sichere dir regelmäßig eine Kopie.</p>
+      <div class="formular-knoepfe">
+        <button type="button" class="knopf still" id="e-export">Sicherung speichern</button>
+        <button type="button" class="knopf still" id="e-import">Sicherung laden</button>
+      </div>
+      <input type="file" id="e-datei" accept="application/json" hidden>
+      <button type="button" class="knopf gefahr" id="e-reset">Alle Daten löschen</button>
+    </div>
+
+  </section>
+
+</main>
+
+<nav class="tabbar">
+  <button class="tab aktiv" data-view="uebersicht"><span>◐</span>Übersicht</button>
+  <button class="tab" data-view="ausgaben"><span>＋</span>Ausgaben</button>
+  <button class="tab" data-view="abrechnung"><span>⇄</span>Abrechnung</button>
+  <button class="tab" data-view="einstellungen"><span>⚙</span>Einstellungen</button>
+</nav>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/store.js"></script>
+<script src="js/budget.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

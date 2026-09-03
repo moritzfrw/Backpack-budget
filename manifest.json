@@ -1,0 +1,13 @@
+{
+  "name": "Backpack Budget",
+  "short_name": "Budget",
+  "description": "Reisekasse und Tagesbudget fürs Backpacking",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "lang": "de",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
