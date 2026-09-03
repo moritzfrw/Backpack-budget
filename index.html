@@ -228,8 +228,13 @@
              autocapitalize="off" spellcheck="false">
 
       <label class="feld-label" for="e-sync-schluessel">Zugangsschlüssel</label>
-      <input id="e-sync-schluessel" type="password" placeholder="einmal eintragen"
-             autocomplete="off" autocapitalize="off" spellcheck="false">
+      <!-- Bewusst ein normales Textfeld und kein Passwortfeld: der
+           Schluessel wird einmal am Handy abgetippt, und Tippfehler
+           in 38 unsichtbaren Zeichen sucht man sich zu Tode. Nach dem
+           Verbinden wird das Feld ohnehin geleert. -->
+      <input id="e-sync-schluessel" type="text" placeholder="einmal eintragen"
+             autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <p class="hinweis mini">Groß- und Kleinschreibung müssen genau stimmen.</p>
 
       <div class="formular-knoepfe">
         <button type="button" class="knopf primaer" id="e-sync-verbinden">Verbinden</button>
