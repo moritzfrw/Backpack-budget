@@ -5,38 +5,39 @@
    ========================================================== */
 
 :root {
-  --grund:      #f6f7f9;
-  --karte:      #ffffff;
-  --rand:       #e4e7ec;
-  --text:       #14181f;
-  --text-leise: #6b7482;
-  --akzent:     #2f6f5e;   /* ruhiges Grün */
+  --grund:       #f6f7f9;
+  --karte:       #ffffff;
+  --rand:        #e4e7ec;
+  --text:        #14181f;
+  --text-leise:  #6b7482;
+  --akzent:      #2f6f5e;
   --akzent-weich:#e6f1ed;
-  --warn:       #b8873a;
-  --gefahr:     #b4483c;
-  --schatten:   0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
-  --radius:     14px;
+  --warn:        #b8873a;
+  --gefahr:      #b4483c;
+  --gefahr-weich:#fbeceb;
+  --schatten:    0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
+  --radius:      14px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --grund:      #0b1220;
-    --karte:      #141c2b;
-    --rand:       #26304200;
-    --text:       #e8ecf3;
-    --text-leise: #8d99ad;
-    --akzent:     #4fbf9b;
+    --grund:       #0b1220;
+    --karte:       #141c2b;
+    --rand:        #232d3e;
+    --text:        #e8ecf3;
+    --text-leise:  #8d99ad;
+    --akzent:      #4fbf9b;
     --akzent-weich:#16302a;
-    --warn:       #d9a441;
-    --gefahr:     #e0685a;
-    --schatten:   0 1px 2px rgba(0,0,0,.35);
+    --warn:        #d9a441;
+    --gefahr:      #e0685a;
+    --gefahr-weich:#2e1a19;
+    --schatten:    0 1px 2px rgba(0,0,0,.35);
   }
-  :root { --rand: #232d3e; }
 }
 
 * { box-sizing: border-box; }
 
-/* Versteckte Bereiche wirklich verstecken – schlaegt jede
+/* Versteckte Bereiche wirklich verstecken – schlägt jede
    display-Regel weiter unten. */
 [hidden] { display: none !important; }
 
@@ -46,16 +47,12 @@ body {
   color: var(--text);
   font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
-  padding-bottom: 90px;
+  padding-bottom: 92px;
 }
 
 /* ---------- Kopfzeile ---------- */
 
-.kopf {
-  padding: 18px 18px 8px;
-  max-width: 620px;
-  margin: 0 auto;
-}
+.kopf { padding: 18px 18px 8px; max-width: 620px; margin: 0 auto; }
 .kopf-zeile { display: flex; align-items: center; gap: 12px; }
 .logo {
   width: 38px; height: 38px; flex: none;
@@ -79,22 +76,31 @@ main { max-width: 620px; margin: 0 auto; padding: 8px 18px 24px; }
   padding: 16px;
 }
 
-.kachel-reihe { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-
 .kachel-label {
   font-size: 12px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--text-leise); margin-bottom: 8px;
+  letter-spacing: .06em; color: var(--text-leise); margin-bottom: 10px;
 }
-.kachel-wert { font-size: 24px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.kachel-sub  { font-size: 12.5px; color: var(--text-leise); margin-top: 3px; }
+.kachel-sub { font-size: 13px; color: var(--text-leise); margin-top: 4px; }
+.hinweis { font-size: 13px; color: var(--text-leise); margin: 0 0 14px; }
+.hinweis.mini { font-size: 12.5px; margin: 8px 0 0; }
+.trenner { height: 1px; background: var(--rand); margin: 18px 0 16px; }
+
+/* ---------- Einrichtungs-Hinweis ---------- */
+
+.setup { border-color: var(--akzent); background: var(--akzent-weich); }
+.setup-titel { font-size: 17px; font-weight: 650; margin-bottom: 6px; }
+.setup .hinweis { color: var(--text); opacity: .8; }
+.setup .knopf { flex: none; }
 
 /* ---------- Heute-Karte ---------- */
 
 .heute-label { font-size: 13px; color: var(--text-leise); }
 .heute-betrag {
-  font-size: 40px; font-weight: 680; letter-spacing: -.03em;
+  font-size: 42px; font-weight: 680; letter-spacing: -.03em;
   margin: 4px 0 14px; font-variant-numeric: tabular-nums;
 }
+.heute-betrag.negativ { color: var(--gefahr); }
+
 .balken {
   height: 8px; border-radius: 999px; overflow: hidden;
   background: color-mix(in srgb, var(--text-leise) 18%, transparent);
@@ -105,31 +111,25 @@ main { max-width: 620px; margin: 0 auto; padding: 8px 18px 24px; }
 }
 .balken-fuell.warnung { background: var(--warn); }
 .balken-fuell.drueber { background: var(--gefahr); }
+
 .heute-fuss { font-size: 13px; color: var(--text-leise); margin-top: 9px; }
-.heute-fuss.drueber { color: var(--gefahr); font-weight: 600; }
 
-.reichweite-wert { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
-
-/* ---------- Kategorie-Aufteilung ---------- */
-
-.kat-liste { display: flex; flex-direction: column; gap: 11px; }
-.kat-zeile { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; }
-.kat-name { font-size: 14px; }
-.kat-schiene {
-  grid-column: 2 / 4; height: 5px; border-radius: 999px;
-  background: color-mix(in srgb, var(--text-leise) 15%, transparent);
-  margin-top: -4px;
+.rat { margin-top: 14px; display: flex; flex-direction: column; gap: 9px; }
+.rat-satz {
+  margin: 0; font-size: 14px; line-height: 1.5;
+  padding: 11px 13px; border-radius: 10px;
+  background: var(--grund); color: var(--text);
 }
-.kat-schiene i { display: block; height: 100%; border-radius: 999px; background: var(--akzent); }
-.kat-betrag { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--text-leise); }
+.rat-satz.lob     { background: var(--akzent-weich); color: var(--akzent); font-weight: 550; }
+.rat-satz.warnung { background: var(--gefahr-weich); color: var(--gefahr); font-weight: 550; }
 
-/* ---------- Formular ---------- */
+/* ---------- Eingabefeld ---------- */
 
 .feld-label {
   display: block; font-size: 12px; font-weight: 600;
   color: var(--text-leise); margin: 14px 0 6px;
 }
-.formular .feld-label:first-of-type { margin-top: 0; }
+.formular > .feld-label:first-of-type { margin-top: 0; }
 
 input[type=text], input[type=date], select {
   width: 100%; padding: 11px 12px;
@@ -141,12 +141,40 @@ input:focus, select:focus { outline: 2px solid var(--akzent); outline-offset: -1
 
 .betrag-zeile { display: flex; align-items: baseline; gap: 8px; }
 .betrag-eingabe {
-  font-size: 34px !important; font-weight: 650; padding: 6px 0 !important;
+  font-size: 36px !important; font-weight: 650; padding: 4px 0 !important;
   background: none !important; border: none !important;
   font-variant-numeric: tabular-nums; letter-spacing: -.02em;
 }
 .betrag-eingabe:focus { outline: none; }
 .waehrung { font-size: 22px; color: var(--text-leise); }
+
+.kat-kacheln {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 16px;
+}
+.kat-kachel {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  padding: 13px 14px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--rand); background: var(--grund);
+  color: var(--text); font-size: 14px; font-family: inherit; text-align: left;
+}
+.kat-kachel-icon { font-size: 22px; line-height: 1; }
+.kat-kachel.aktiv {
+  background: var(--akzent-weich); border-color: var(--akzent);
+  color: var(--akzent); font-weight: 620;
+}
+
+.mehr-schalter {
+  margin-top: 14px; padding: 0; border: none; background: none; cursor: pointer;
+  color: var(--text-leise); font-size: 13.5px; font-family: inherit; font-weight: 600;
+}
+.mehr-schalter span { font-size: 11px; }
+.mehr-panel { margin-top: 4px; }
+
+.verteil-hinweis {
+  margin-top: 12px; padding: 10px 13px; border-radius: 10px;
+  background: var(--akzent-weich); color: var(--akzent);
+  font-size: 13.5px; font-weight: 550;
+}
 
 .zwei-spalten { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
@@ -157,8 +185,7 @@ input:focus, select:focus { outline: 2px solid var(--akzent); outline-offset: -1
   color: var(--text); font-size: 13.5px; font-family: inherit;
 }
 .chip.aktiv {
-  background: var(--akzent-weich);
-  border-color: var(--akzent);
+  background: var(--akzent-weich); border-color: var(--akzent);
   color: var(--akzent); font-weight: 600;
 }
 
@@ -176,7 +203,7 @@ input:focus, select:focus { outline: 2px solid var(--akzent); outline-offset: -1
 .knopf.loeschen{ color: var(--gefahr); background: var(--grund); }
 .knopf:active  { transform: translateY(1px); }
 
-/* ---------- Ausgabenliste ---------- */
+/* ---------- Listen ---------- */
 
 .listen-kopf {
   font-size: 12px; font-weight: 600; text-transform: uppercase;
@@ -195,18 +222,42 @@ input:focus, select:focus { outline: 2px solid var(--akzent); outline-offset: -1
   cursor: pointer; text-align: left; width: 100%;
   color: inherit; font-family: inherit;
 }
-.posten-icon { font-size: 19px; }
+.posten-icon  { font-size: 19px; }
 .posten-titel { font-size: 14.5px; font-weight: 550; }
 .posten-sub   { font-size: 12.5px; color: var(--text-leise); margin-top: 1px; }
 .posten-betrag{ font-size: 15px; font-weight: 620; font-variant-numeric: tabular-nums; }
-.leer { color: var(--text-leise); font-size: 14px; padding: 22px 2px; text-align: center; }
+.leer { color: var(--text-leise); font-size: 14px; padding: 20px 2px; text-align: center; }
 
-/* ---------- Abrechnung ---------- */
+/* ---------- Auswertung ---------- */
+
+.prognose-wert { font-size: 24px; font-weight: 660; letter-spacing: -.02em; }
+.prognose-wert.gut     { color: var(--akzent); }
+.prognose-wert.schlecht{ color: var(--gefahr); }
+
+.zahlen-gitter {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px;
+}
+.zahl { background: var(--grund); border-radius: 11px; padding: 12px 13px; }
+.zahl-label { font-size: 12px; color: var(--text-leise); }
+.zahl-wert  { font-size: 16px; font-weight: 620; margin-top: 2px;
+              font-variant-numeric: tabular-nums; }
+
+.kat-liste { display: flex; flex-direction: column; gap: 12px; }
+.kat-zeile { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; }
+.kat-name  { font-size: 14px; }
+.kat-schiene {
+  grid-column: 2 / 4; height: 5px; border-radius: 999px; margin-top: -4px;
+  background: color-mix(in srgb, var(--text-leise) 15%, transparent);
+}
+.kat-schiene i { display: block; height: 100%; border-radius: 999px; background: var(--akzent); }
+.kat-betrag { font-size: 13.5px; font-variant-numeric: tabular-nums; color: var(--text-leise); }
+
+/* ---------- Reisekasse ---------- */
 
 .salden, .ausgleich { display: flex; flex-direction: column; gap: 10px; }
-.saldo-zeile { display: flex; justify-content: space-between; align-items: center; }
-.saldo-name { font-size: 14.5px; }
-.saldo-wert { font-size: 14.5px; font-weight: 620; font-variant-numeric: tabular-nums; }
+.saldo-zeile { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.saldo-name  { font-size: 14.5px; }
+.saldo-wert  { font-size: 14.5px; font-weight: 620; font-variant-numeric: tabular-nums; }
 .saldo-wert.plus  { color: var(--akzent); }
 .saldo-wert.minus { color: var(--gefahr); }
 .ausgleich-zeile {
@@ -215,7 +266,13 @@ input:focus, select:focus { outline: 2px solid var(--akzent); outline-offset: -1
 }
 .ausgleich-zeile b { font-variant-numeric: tabular-nums; }
 
-/* ---------- Personen ---------- */
+/* ---------- Einstellungen ---------- */
+
+.ergebnis-karte { border-color: var(--akzent); }
+.ergebnis-wert {
+  font-size: 30px; font-weight: 680; letter-spacing: -.02em;
+  color: var(--akzent); font-variant-numeric: tabular-nums;
+}
 
 .personen { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .person-tag {
@@ -228,7 +285,6 @@ input:focus, select:focus { outline: 2px solid var(--akzent); outline-offset: -1
   color: var(--text-leise); font-size: 16px; line-height: 1; padding: 0 4px;
 }
 .zeile-eingabe { display: flex; gap: 8px; }
-.hinweis { font-size: 13px; color: var(--text-leise); margin: 0 0 14px; }
 
 /* ---------- Tableiste unten ---------- */
 
@@ -243,8 +299,7 @@ input:focus, select:focus { outline: 2px solid var(--akzent); outline-offset: -1
 .tab {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   border: none; background: none; cursor: pointer;
-  color: var(--text-leise); font-size: 11px; font-family: inherit;
-  padding: 7px 0;
+  color: var(--text-leise); font-size: 11px; font-family: inherit; padding: 7px 0;
 }
 .tab span { font-size: 18px; line-height: 1; }
 .tab.aktiv { color: var(--akzent); font-weight: 600; }
@@ -255,5 +310,5 @@ input:focus, select:focus { outline: 2px solid var(--akzent); outline-offset: -1
   position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%);
   background: var(--text); color: var(--grund);
   padding: 11px 18px; border-radius: 999px; font-size: 14px;
-  box-shadow: 0 6px 22px rgba(0,0,0,.22); z-index: 50;
+  box-shadow: 0 6px 22px rgba(0,0,0,.22); z-index: 50; max-width: 90vw;
 }

@@ -11,12 +11,11 @@
 
   let zustand = Store.laden();
 
-  /* Merker fuer das Formular: welche Kategorie ist gewaehlt,
-     mit wem wird geteilt, bearbeite ich gerade etwas Bestehendes. */
+  /* Merker fuer das Eingabefeld */
   let formKategorie = 'essen';
   let formGeteilt = new Set();
 
-  const $  = id => document.getElementById(id);
+  const $ = id => document.getElementById(id);
   const el = (tag, klasse, text) => {
     const n = document.createElement(tag);
     if (klasse) n.className = klasse;
@@ -44,11 +43,18 @@
     const heute = Store.heuteAlsText();
     if (datumText === heute) return 'Heute';
     if (datumText === Budget.tagVerschieben(heute, -1)) return 'Gestern';
-    const [j, m, t] = datumText.split('-').map(Number);
-    return new Date(j, m - 1, t).toLocaleDateString('de-DE', {
-      weekday: 'short', day: 'numeric', month: 'short'
-    });
+    return datumKurz(datumText, true);
   }
+
+  function datumKurz(datumText, mitWochentag) {
+    if (!datumText) return '–';
+    const [j, m, t] = datumText.split('-').map(Number);
+    return new Date(j, m - 1, t).toLocaleDateString('de-DE', mitWochentag
+      ? { weekday: 'short', day: 'numeric', month: 'short' }
+      : { day: 'numeric', month: 'long' });
+  }
+
+  function tage(n) { return n + (n === 1 ? ' Tag' : ' Tage'); }
 
   function person(id) {
     return zustand.personen.find(p => p.id === id) || { id, name: '?' };
@@ -64,7 +70,7 @@
     t.textContent = text;
     t.hidden = false;
     clearTimeout(melden._uhr);
-    melden._uhr = setTimeout(() => { t.hidden = true; }, 2200);
+    melden._uhr = setTimeout(() => { t.hidden = true; }, 2400);
   }
 
   /* ==========================================================
@@ -72,96 +78,352 @@
      ========================================================== */
 
   function zeichnen() {
-    zeichneKopf();
-    zeichneUebersicht();
+    const p = Budget.plan(zustand);
+    zeichneKopf(p);
+    zeichneHeute(p);
     zeichneFormular();
     zeichneAusgaben();
-    zeichneAbrechnung();
-    zeichneEinstellungen();
+    zeichneAuswertung(p);
+    zeichneEinstellungen(p);
   }
 
-  function zeichneKopf() {
+  function zeichneKopf(p) {
     $('kopf-reise').textContent = zustand.reise.name || 'Meine Reise';
-    const budget = Number(zustand.reise.tagesbudget) || 0;
-    $('kopf-person').textContent =
-      person(zustand.ichBinId).name +
-      (budget ? ' · ' + geld(budget) + ' pro Tag' : '');
+    if (!p.eingerichtet) {
+      $('kopf-fortschritt').textContent = 'Noch nicht eingerichtet';
+    } else if (p.status === 'vorher') {
+      $('kopf-fortschritt').textContent = 'Start am ' + datumKurz(p.start);
+    } else if (p.status === 'beendet') {
+      $('kopf-fortschritt').textContent = 'Reise beendet';
+    } else {
+      $('kopf-fortschritt').textContent = 'Tag ' + p.tagNummer + ' von ' + p.gesamtTage;
+    }
   }
 
-  /* ---------- Übersicht ---------- */
+  /* ---------- Heute ---------- */
 
-  function zeichneUebersicht() {
-    const ich = zustand.ichBinId;
-    const heute = Store.heuteAlsText();
-    const budget = Number(zustand.reise.tagesbudget) || 0;
+  function zeichneHeute(p) {
+    $('setup-karte').hidden = p.eingerichtet;
+    $('heute-karte').hidden = !p.eingerichtet;
+    if (p.eingerichtet) {
+      $('heute-betrag').textContent = geld(p.heuteVerfuegbar);
+      $('heute-betrag').classList.toggle('negativ', p.heuteVerfuegbar < 0);
 
-    const heuteSumme = Budget.summeAnteil(zustand.ausgaben, ich, Budget.amTag(heute));
-    $('heute-betrag').textContent = geld(heuteSumme);
-
-    const balken = $('heute-balken');
-    const fuss = $('heute-fuss');
-    balken.className = 'balken-fuell';
-    fuss.className = 'heute-fuss';
-
-    if (budget > 0) {
-      const anteilProzent = Math.min(100, (heuteSumme / budget) * 100);
+      const balken = $('heute-balken');
+      balken.className = 'balken-fuell';
+      const anteilProzent = p.heutigesBudget > 0
+        ? Math.min(100, p.heuteAusgegeben / p.heutigesBudget * 100) : 0;
       balken.style.width = anteilProzent + '%';
-      if (heuteSumme > budget) {
-        balken.classList.add('drueber');
-        fuss.classList.add('drueber');
-        fuss.textContent = geld(heuteSumme - budget) + ' über deinem Tagesbudget';
-      } else {
-        if (heuteSumme / budget > 0.8) balken.classList.add('warnung');
-        fuss.textContent = 'Noch ' + geld(budget - heuteSumme) + ' von ' + geld(budget);
-      }
-    } else {
-      balken.style.width = '0%';
-      fuss.textContent = 'Kein Tagesbudget gesetzt – trag es in den Einstellungen ein';
+      if (p.heuteVerfuegbar < 0) balken.classList.add('drueber');
+      else if (anteilProzent > 80) balken.classList.add('warnung');
+
+      $('heute-fuss').textContent = geld(p.heuteAusgegeben) + ' von ' +
+        geld(p.heutigesBudget) + ' ausgegeben';
+
+      const rat = $('heute-rat');
+      rat.textContent = '';
+      ratSaetze(p).forEach(satz => {
+        const zeile = el('p', 'rat-satz' + (satz.warnung ? ' warnung' : satz.lob ? ' lob' : ''), satz.text);
+        rat.append(zeile);
+      });
     }
-
-    /* Woche */
-    const wocheSumme = Budget.summeAnteil(zustand.ausgaben, ich, Budget.letzteTage(7));
-    $('woche-betrag').textContent = geld(wocheSumme);
-    $('woche-sub').textContent = 'Ø ' + geld(wocheSumme / 7) + ' pro Tag';
-
-    /* Gesamt */
-    const r = Budget.reichweite(zustand);
-    $('gesamt-betrag').textContent = geld(r.ausgegeben);
-    $('gesamt-sub').textContent = 'über ' + r.bisherigeTage +
-      (r.bisherigeTage === 1 ? ' Tag' : ' Tage');
-
-    zeichneReichweite(r);
-    zeichneKategorien();
+    zeichneHeuteListe(p);
   }
 
-  function zeichneReichweite(r) {
-    const wert = $('reichweite-wert');
-    const sub  = $('reichweite-sub');
-
-    if (r.restTage !== undefined) {
-      if (r.restTage === 0) {
-        wert.textContent = 'Letzter Reisetag';
-        sub.textContent = r.restBudget >= 0
-          ? 'Du liegst ' + geld(r.restBudget) + ' unter Plan.'
-          : 'Du liegst ' + geld(-r.restBudget) + ' über Plan.';
-      } else {
-        wert.textContent = geld(r.proRestTag) + ' pro Tag';
-        sub.textContent = 'für die restlichen ' + r.restTage + ' Tage. ' +
-          (r.proRestTag < r.schnitt
-            ? 'Weniger als dein bisheriger Schnitt von ' + geld(r.schnitt) + '.'
-            : 'Mehr als dein bisheriger Schnitt von ' + geld(r.schnitt) + '.');
-      }
-    } else if (r.abweichung !== undefined) {
-      wert.textContent = geld(r.schnitt) + ' pro Tag';
-      sub.textContent = r.abweichung > 0
-        ? geld(r.abweichung) + ' pro Tag über deinem Budget. Setz ein Enddatum für eine echte Prognose.'
-        : geld(-r.abweichung) + ' pro Tag unter deinem Budget.';
-    } else {
-      wert.textContent = geld(r.schnitt) + ' pro Tag';
-      sub.textContent = zustand.ausgaben.length
-        ? 'Dein bisheriger Schnitt.'
-        : 'Noch nichts eingetragen. Setz ein Enddatum in den Einstellungen für eine Prognose.';
+  /* Die Saetze, die dir sagen, wie du dastehst. */
+  function ratSaetze(p) {
+    if (p.status === 'vorher') {
+      return [{ text: 'Deine Reise startet am ' + datumKurz(p.start) + '. Geplant sind ' +
+                geld(p.tagesbudgetPlan) + ' pro Tag.' }];
     }
+    if (p.status === 'beendet') {
+      const rest = p.gesamtbudget - p.gesamtAusgegeben;
+      return [{
+        text: 'Reise vorbei. Du hast ' + geld(p.gesamtAusgegeben) + ' von ' +
+              geld(p.gesamtbudget) + ' ausgegeben – ' +
+              (rest >= 0 ? geld(rest) + ' übrig.' : geld(-rest) + ' darüber.'),
+        lob: rest >= 0, warnung: rest < 0
+      }];
+    }
+
+    const saetze = [];
+
+    /* 1. Wie steht der heutige Tag? */
+    if (p.heuteAusgegeben === 0) {
+      saetze.push({ text: 'Heute noch nichts eingetragen. Du hast ' +
+                          geld(p.heutigesBudget) + ' zur Verfügung.' });
+    } else if (p.heuteVerfuegbar >= 0) {
+      saetze.push({ text: 'Gut unterwegs – noch ' + geld(p.heuteVerfuegbar) +
+                          ' für heute.', lob: true });
+    } else {
+      let text = 'Heute ' + geld(-p.heuteVerfuegbar) + ' über deinem Tagesbudget.';
+      if (p.morgenBudget !== null) {
+        text += ' Dadurch hast du morgen nur noch ' + geld(p.morgenBudget) + '.';
+      }
+      saetze.push({ text, warnung: true });
+    }
+
+    /* 2. Was heisst das fuer die ganze Reise? */
+    if (p.differenzTage === null) {
+      saetze.push({ text: 'Sobald ein paar Tage eingetragen sind, siehst du hier, ' +
+                          'ob dein Geld bis zum Reiseende reicht.' });
+    } else if (p.differenzTage >= 2) {
+      /* Nach wenigen Tagen kann der Schnitt noch sehr niedrig sein und
+         die Prognose absurde Zahlen liefern. Dann lieber qualitativ. */
+      saetze.push({ text: p.differenzTage > p.restTage
+        ? 'Bei deinem bisherigen Schnitt von ' + geld(p.schnitt) + ' pro Tag hast du ' +
+          'reichlich Luft – dein Geld würde weit über das Reiseende hinaus reichen.'
+        : 'Bei deinem bisherigen Schnitt von ' + geld(p.schnitt) + ' pro Tag reicht ' +
+          'dein Geld sogar ' + tage(p.differenzTage) + ' länger als geplant.',
+        lob: true });
+    } else if (p.differenzTage <= -2) {
+      saetze.push({ text: 'Wenn du so weitermachst, ist dein Geld am ' +
+                          datumKurz(p.prognoseEnde) + ' alle – ' +
+                          tage(Math.abs(p.differenzTage)) + ' vor deinem geplanten Ende. ' +
+                          'Versuch, in den nächsten Tagen unter ' + geld(p.heutigesBudget) +
+                          ' zu bleiben.', warnung: true });
+    } else {
+      saetze.push({ text: 'Du liegst im Plan – dein Geld reicht bis zum Reiseende.', lob: true });
+    }
+    return saetze;
+  }
+
+  /* Was heute vom Budget abgeht – inklusive der Tagesanteile
+     laufender Buchungen. */
+  function zeichneHeuteListe(p) {
+    const liste = $('heute-liste');
+    liste.textContent = '';
+
+    const heute = p.heute;
+    const treffer = zustand.ausgaben.filter(a =>
+      Budget.tageEinerAusgabe(a).includes(heute) &&
+      Budget.anteilProTag(a, zustand.ichBinId) > 0);
+
+    $('heute-kopf').hidden = !treffer.length;
+    if (!treffer.length) return;
+
+    treffer.forEach(a => {
+      const k = Store.kategorie(a.kategorie);
+      const anzahlTage = Budget.tageEinerAusgabe(a).length;
+      const posten = el('button', 'posten');
+      posten.type = 'button';
+
+      const text = el('div');
+      text.append(el('div', 'posten-titel', a.notiz || k.name));
+      text.append(el('div', 'posten-sub', anzahlTage > 1
+        ? 'Anteil von ' + geld(a.betrag) + ' über ' + tage(anzahlTage)
+        : k.name));
+
+      posten.append(el('div', 'posten-icon', k.icon), text,
+                    el('div', 'posten-betrag', geld(Budget.anteilProTag(a, zustand.ichBinId))));
+      posten.onclick = () => formularFuellen(a);
+      liste.append(posten);
+    });
+  }
+
+  /* ---------- Eingabefeld ---------- */
+
+  function zeichneFormular() {
+    /* Vier grosse Kategorie-Kacheln */
+    const kats = $('f-kategorien');
+    kats.textContent = '';
+    Store.KATEGORIEN.forEach(k => {
+      const kachel = el('button', 'kat-kachel' + (k.id === formKategorie ? ' aktiv' : ''));
+      kachel.type = 'button';
+      kachel.append(el('span', 'kat-kachel-icon', k.icon), el('span', null, k.name));
+      kachel.onclick = () => {
+        formKategorie = k.id;
+        /* Bei Unterkunft ist der Zeitraum fast immer wichtig –
+           deshalb klappt das Feld dann von selbst auf. */
+        if (k.id === 'unterkunft') $('f-mehr').hidden = false;
+        zeichneFormular();
+        verteilHinweis();
+      };
+      kats.append(kachel);
+    });
+
+    /* Gruppen-Felder nur zeigen, wenn ihr mehr als einer seid */
+    $('f-gruppe').hidden = zustand.personen.length < 2;
+
+    const bezahlt = $('f-bezahlt');
+    const vorher = bezahlt.value;
+    bezahlt.textContent = '';
+    zustand.personen.forEach(p => {
+      const o = el('option', null, p.name);
+      o.value = p.id;
+      bezahlt.append(o);
+    });
+    bezahlt.value = zustand.personen.some(p => p.id === vorher) ? vorher : zustand.ichBinId;
+
+    if (!formGeteilt.size) zustand.personen.forEach(p => formGeteilt.add(p.id));
+    const geteilt = $('f-geteilt');
+    geteilt.textContent = '';
+    zustand.personen.forEach(p => {
+      const c = el('button', 'chip' + (formGeteilt.has(p.id) ? ' aktiv' : ''), p.name);
+      c.type = 'button';
+      c.onclick = () => {
+        if (formGeteilt.has(p.id)) formGeteilt.delete(p.id); else formGeteilt.add(p.id);
+        if (!formGeteilt.size) formGeteilt.add(p.id);
+        zeichneFormular();
+      };
+      geteilt.append(c);
+    });
+
+    $('f-waehrung').textContent = zustand.reise.waehrung;
+    if (!$('f-datum').value) $('f-datum').value = Store.heuteAlsText();
+    $('f-mehr-schalter').hidden = !$('f-mehr').hidden;
+  }
+
+  /* Zeigt live, wie sich eine Buchung auf die Tage verteilt. */
+  function verteilHinweis() {
+    const hinweis = $('f-verteil');
+    const betrag = betragLesen($('f-betrag').value);
+    const von = $('f-datum').value, bis = $('f-bis').value;
+
+    if (!betrag || !von || !bis || bis <= von) { hinweis.hidden = true; return; }
+    const anzahl = Budget.tageZwischen(von, bis);
+    hinweis.hidden = false;
+    hinweis.textContent = geld(betrag) + ' verteilt auf ' + tage(anzahl) + ' = ' +
+                          geld(betrag / anzahl) + ' pro Tag';
+  }
+
+  function formularLeeren() {
+    $('f-id').value = '';
+    $('f-betrag').value = '';
+    $('f-notiz').value = '';
+    $('f-bis').value = '';
+    $('f-datum').value = Store.heuteAlsText();
+    $('f-mehr').hidden = true;
+    formKategorie = 'essen';
+    formGeteilt = new Set(zustand.personen.map(p => p.id));
+    $('f-speichern').textContent = 'Eintragen';
+    $('f-abbrechen').hidden = true;
+    $('f-loeschen').hidden = true;
+    zeichneFormular();
+    verteilHinweis();
+  }
+
+  function formularFuellen(a) {
+    $('f-id').value = a.id;
+    $('f-betrag').value = String(a.betrag).replace('.', ',');
+    $('f-notiz').value = a.notiz || '';
+    $('f-datum').value = a.datum;
+    $('f-bis').value = a.bisDatum || '';
+    $('f-mehr').hidden = false;
+    formKategorie = a.kategorie;
+    formGeteilt = new Set(a.geteiltMit);
+    zeichneFormular();
+    $('f-bezahlt').value = a.bezahltVon;
+    $('f-speichern').textContent = 'Änderung speichern';
+    $('f-abbrechen').hidden = false;
+    $('f-loeschen').hidden = false;
+    verteilHinweis();
+    ansichtWechseln('heute');
+    $('formular').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* ---------- Ausgabenliste ---------- */
+
+  function zeichneAusgaben() {
+    const liste = $('ausgaben-liste');
+    liste.textContent = '';
+
+    const alle = [...zustand.ausgaben].sort((a, b) =>
+      a.datum === b.datum ? b.angelegt - a.angelegt : (a.datum < b.datum ? 1 : -1));
+
+    $('ausgaben-anzahl').textContent = alle.length
+      ? alle.length + (alle.length === 1 ? ' Eintrag' : ' Einträge')
+      : 'Noch keine Ausgaben';
+
+    if (!alle.length) {
+      liste.append(el('div', 'leer', 'Trag deine erste Ausgabe auf dem Heute-Bildschirm ein.'));
+      return;
+    }
+
+    let aktuellerTag = null;
+    alle.forEach(a => {
+      if (a.datum !== aktuellerTag) {
+        aktuellerTag = a.datum;
+        const tagSumme = zustand.ausgaben
+          .filter(x => x.datum === a.datum)
+          .reduce((s, x) => s + x.betrag, 0);
+        const kopf = el('div', 'tag-kopf');
+        kopf.append(el('span', null, datumLesbar(a.datum)), el('span', null, geld(tagSumme)));
+        liste.append(kopf);
+      }
+
+      const k = Store.kategorie(a.kategorie);
+      const anzahlTage = Budget.tageEinerAusgabe(a).length;
+      const posten = el('button', 'posten');
+      posten.type = 'button';
+
+      const text = el('div');
+      text.append(el('div', 'posten-titel', a.notiz || k.name));
+
+      const teile = [];
+      if (a.notiz) teile.push(k.name);
+      if (anzahlTage > 1) teile.push('über ' + tage(anzahlTage) + ' verteilt');
+      if (zustand.personen.length > 1) {
+        teile.push(a.geteiltMit.length > 1
+          ? person(a.bezahltVon).name + ' zahlte · geteilt durch ' + a.geteiltMit.length
+          : person(a.bezahltVon).name);
+      }
+      text.append(el('div', 'posten-sub', teile.join(' · ')));
+
+      posten.append(el('div', 'posten-icon', k.icon), text,
+                    el('div', 'posten-betrag', geld(a.betrag)));
+      posten.onclick = () => formularFuellen(a);
+      liste.append(posten);
+    });
+  }
+
+  /* ---------- Auswertung ---------- */
+
+  function zeichneAuswertung(p) {
+    zeichnePrognose(p);
+    zeichneKategorien();
+    zeichneReisekasse();
+  }
+
+  function zeichnePrognose(p) {
+    const wert = $('prognose-wert'), sub = $('prognose-sub');
+    wert.className = 'prognose-wert';
+
+    if (!p.eingerichtet) {
+      wert.textContent = 'Noch nicht eingerichtet';
+      sub.textContent = 'Trag unter Einstellungen deinen Zeitraum und dein Budget ein.';
+    } else if (p.differenzTage === null) {
+      wert.textContent = geld(p.tagesbudgetPlan) + ' pro Tag';
+      sub.textContent = 'Dein Plan: ' + geld(p.gesamtbudget) + ' über ' + tage(p.gesamtTage) + '.';
+    } else if (p.differenzTage >= 0) {
+      wert.textContent = 'Dein Geld reicht';
+      wert.classList.add('gut');
+      sub.textContent = p.differenzTage > p.restTage
+        ? 'Bei ' + geld(p.schnitt) + ' pro Tag reicht es weit über dein Reiseende am ' +
+          datumKurz(p.ende) + ' hinaus.'
+        : 'Bei ' + geld(p.schnitt) + ' pro Tag reicht es bis zum ' +
+          datumKurz(p.prognoseEnde) + ' – dein Reiseende ist der ' + datumKurz(p.ende) + '.';
+    } else {
+      wert.textContent = 'Es wird knapp';
+      wert.classList.add('schlecht');
+      sub.textContent = 'Bei ' + geld(p.schnitt) + ' pro Tag ist das Geld am ' +
+        datumKurz(p.prognoseEnde) + ' alle – ' + tage(Math.abs(p.differenzTage)) +
+        ' vor deinem Reiseende am ' + datumKurz(p.ende) + '.';
+    }
+
+    const gitter = $('prognose-zahlen');
+    gitter.textContent = '';
+    if (!p.eingerichtet) return;
+    [
+      ['Gesamtbudget', geld(p.gesamtbudget)],
+      ['Schon ausgegeben', geld(p.gesamtAusgegeben)],
+      ['Übrig', geld(p.uebrig)],
+      ['Schnitt bisher', p.abgeschlosseneTage > 0 ? geld(p.schnitt) + ' / Tag' : '–']
+    ].forEach(([label, text]) => {
+      const feld = el('div', 'zahl');
+      feld.append(el('div', 'zahl-label', label), el('div', 'zahl-wert', text));
+      gitter.append(feld);
+    });
   }
 
   function zeichneKategorien() {
@@ -180,7 +442,7 @@
       zeile.append(
         el('span', null, z.kategorie.icon),
         el('span', 'kat-name', z.kategorie.name),
-        el('span', 'kat-betrag', geld(z.betrag))
+        el('span', 'kat-betrag', geld(z.betrag) + '  ·  ' + z.ganz + '%')
       );
       const schiene = el('div', 'kat-schiene');
       const fuell = el('i');
@@ -191,203 +453,82 @@
     });
   }
 
-  /* ---------- Formular ---------- */
+  function zeichneReisekasse() {
+    const karte = $('karte-reisekasse');
+    karte.hidden = zustand.personen.length < 2;
+    if (karte.hidden) return;
 
-  function zeichneFormular() {
-    /* Kategorie-Chips */
-    const kats = $('f-kategorien');
-    kats.textContent = '';
-    Store.KATEGORIEN.forEach(k => {
-      const c = el('button', 'chip' + (k.id === formKategorie ? ' aktiv' : ''),
-                   k.icon + ' ' + k.name);
-      c.type = 'button';
-      c.onclick = () => { formKategorie = k.id; zeichneFormular(); };
-      kats.append(c);
-    });
-
-    /* "Bezahlt von" */
-    const bezahlt = $('f-bezahlt');
-    const vorher = bezahlt.value;
-    bezahlt.textContent = '';
-    zustand.personen.forEach(p => {
-      const o = el('option', null, p.name);
-      o.value = p.id;
-      bezahlt.append(o);
-    });
-    bezahlt.value = zustand.personen.some(p => p.id === vorher) ? vorher : zustand.ichBinId;
-
-    /* "Geteilt mit" – standardmaessig alle */
-    if (!formGeteilt.size) zustand.personen.forEach(p => formGeteilt.add(p.id));
-    const geteilt = $('f-geteilt');
-    geteilt.textContent = '';
-    zustand.personen.forEach(p => {
-      const c = el('button', 'chip' + (formGeteilt.has(p.id) ? ' aktiv' : ''), p.name);
-      c.type = 'button';
-      c.onclick = () => {
-        if (formGeteilt.has(p.id)) formGeteilt.delete(p.id); else formGeteilt.add(p.id);
-        if (!formGeteilt.size) formGeteilt.add(p.id);  /* mindestens einer */
-        zeichneFormular();
-      };
-      geteilt.append(c);
-    });
-
-    $('f-waehrung').textContent = zustand.reise.waehrung;
-    if (!$('f-datum').value) $('f-datum').value = Store.heuteAlsText();
-  }
-
-  function formularLeeren() {
-    $('f-id').value = '';
-    $('f-betrag').value = '';
-    $('f-notiz').value = '';
-    $('f-datum').value = Store.heuteAlsText();
-    formKategorie = 'essen';
-    formGeteilt = new Set(zustand.personen.map(p => p.id));
-    $('f-bezahlt').value = zustand.ichBinId;
-    $('f-speichern').textContent = 'Ausgabe eintragen';
-    $('f-abbrechen').hidden = true;
-    $('f-loeschen').hidden = true;
-    zeichneFormular();
-  }
-
-  function formularFuellen(a) {
-    $('f-id').value = a.id;
-    $('f-betrag').value = String(a.betrag).replace('.', ',');
-    $('f-notiz').value = a.notiz || '';
-    $('f-datum').value = a.datum;
-    formKategorie = a.kategorie;
-    formGeteilt = new Set(a.geteiltMit);
-    zeichneFormular();
-    $('f-bezahlt').value = a.bezahltVon;
-    $('f-speichern').textContent = 'Änderung speichern';
-    $('f-abbrechen').hidden = false;
-    $('f-loeschen').hidden = false;
-    ansichtWechseln('ausgaben');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  /* ---------- Ausgabenliste ---------- */
-
-  function zeichneAusgaben() {
-    const liste = $('ausgaben-liste');
-    liste.textContent = '';
-
-    const alle = [...zustand.ausgaben].sort((a, b) =>
-      a.datum === b.datum ? b.angelegt - a.angelegt : (a.datum < b.datum ? 1 : -1));
-
-    $('ausgaben-anzahl').textContent = alle.length
-      ? alle.length + (alle.length === 1 ? ' Eintrag' : ' Einträge')
-      : 'Noch keine Ausgaben';
-
-    if (!alle.length) {
-      liste.append(el('div', 'leer', 'Trag oben deine erste Ausgabe ein.'));
-      return;
-    }
-
-    let aktuellerTag = null;
-    alle.forEach(a => {
-      if (a.datum !== aktuellerTag) {
-        aktuellerTag = a.datum;
-        const tagSumme = zustand.ausgaben
-          .filter(x => x.datum === a.datum)
-          .reduce((s, x) => s + x.betrag, 0);
-        const kopf = el('div', 'tag-kopf');
-        kopf.append(el('span', null, datumLesbar(a.datum)),
-                    el('span', null, geld(tagSumme)));
-        liste.append(kopf);
-      }
-
-      const k = Store.kategorie(a.kategorie);
-      const posten = el('button', 'posten');
-      posten.type = 'button';
-
-      const text = el('div');
-      text.append(el('div', 'posten-titel', a.notiz || k.name));
-
-      const wer = a.geteiltMit.length > 1
-        ? person(a.bezahltVon).name + ' zahlte · geteilt durch ' + a.geteiltMit.length
-        : person(a.bezahltVon).name;
-      text.append(el('div', 'posten-sub', (a.notiz ? k.name + ' · ' : '') + wer));
-
-      posten.append(el('div', 'posten-icon', k.icon), text,
-                    el('div', 'posten-betrag', geld(a.betrag)));
-      posten.onclick = () => formularFuellen(a);
-      liste.append(posten);
-    });
-  }
-
-  /* ---------- Abrechnung ---------- */
-
-  function zeichneAbrechnung() {
     const salden = $('salden-liste');
     salden.textContent = '';
-
-    if (zustand.personen.length < 2) {
-      salden.append(el('div', 'leer',
-        'Du reist gerade allein. Trag in den Einstellungen Mitreisende ein, dann rechnet die App hier automatisch ab.'));
-      $('ausgleich-liste').textContent = '';
-      $('ausgleich-liste').append(el('div', 'leer', '–'));
-      return;
-    }
-
     Budget.salden(zustand).forEach(s => {
       const zeile = el('div', 'saldo-zeile');
       const links = el('div');
       links.append(el('div', 'saldo-name', s.person.name));
       links.append(el('div', 'kachel-sub',
         'ausgelegt ' + geld(s.ausgelegt) + ' · Anteil ' + geld(s.eigenerAnteil)));
-
-      const wert = el('div', 'saldo-wert ' + (s.saldo >= 0 ? 'plus' : 'minus'),
-        (s.saldo >= 0 ? '+' : '−') + geld(Math.abs(s.saldo)));
-
-      zeile.append(links, wert);
+      links.append();
+      zeile.append(links, el('div', 'saldo-wert ' + (s.saldo >= 0 ? 'plus' : 'minus'),
+        (s.saldo >= 0 ? '+' : '−') + geld(Math.abs(s.saldo))));
       salden.append(zeile);
     });
 
     const ausgleich = $('ausgleich-liste');
     ausgleich.textContent = '';
     const zahlungen = Budget.ausgleich(zustand);
-
     if (!zahlungen.length) {
       ausgleich.append(el('div', 'leer', 'Alles ausgeglichen – niemand schuldet jemandem etwas.'));
       return;
     }
     zahlungen.forEach(z => {
       const zeile = el('div', 'ausgleich-zeile');
-      zeile.append(el('span', null, z.von.name + '  →  ' + z.an.name));
-      const b = el('b', null, geld(z.betrag));
-      zeile.append(b);
+      zeile.append(el('span', null, z.von.name + '  →  ' + z.an.name), el('b', null, geld(z.betrag)));
       ausgleich.append(zeile);
     });
   }
 
   /* ---------- Einstellungen ---------- */
 
-  function zeichneEinstellungen() {
+  function zeichneEinstellungen(p) {
     $('e-reise').value    = zustand.reise.name;
     $('e-start').value    = zustand.reise.start || '';
     $('e-ende').value     = zustand.reise.ende || '';
-    $('e-budget').value   = String(zustand.reise.tagesbudget || '').replace('.', ',');
+    $('e-gesamt').value   = zustand.reise.gesamtbudget
+      ? String(zustand.reise.gesamtbudget).replace('.', ',') : '';
     $('e-waehrung').value = zustand.reise.waehrung;
+
+    const dauer = Budget.tageZwischen(zustand.reise.start, zustand.reise.ende);
+    $('e-dauer').value = dauer > 0 ? dauer : '';
+
+    if (p.eingerichtet) {
+      $('e-ergebnis').textContent = geld(p.tagesbudgetPlan) + ' pro Tag';
+      $('e-ergebnis-sub').textContent = geld(p.gesamtbudget) + ' geteilt durch ' +
+        tage(p.gesamtTage) + '. Die App passt diese Zahl täglich an das an, ' +
+        'was du wirklich ausgibst.';
+    } else {
+      $('e-ergebnis').textContent = '–';
+      $('e-ergebnis-sub').textContent = 'Trag oben Zeitraum und Budget ein.';
+    }
 
     const personen = $('e-personen');
     personen.textContent = '';
-    zustand.personen.forEach(p => {
+    zustand.personen.forEach(pp => {
       const tag = el('div', 'person-tag');
-      tag.append(el('span', null, p.name));
+      tag.append(el('span', null, pp.name));
       if (zustand.personen.length > 1) {
         const x = el('button', null, '×');
-        x.title = p.name + ' entfernen';
-        x.onclick = () => personEntfernen(p.id);
+        x.title = pp.name + ' entfernen';
+        x.onclick = () => personEntfernen(pp.id);
         tag.append(x);
       }
       personen.append(tag);
     });
 
+    $('e-ich-block').hidden = zustand.personen.length < 2;
     const ich = $('e-ich');
     ich.textContent = '';
-    zustand.personen.forEach(p => {
-      const o = el('option', null, p.name);
-      o.value = p.id;
+    zustand.personen.forEach(pp => {
+      const o = el('option', null, pp.name);
+      o.value = pp.id;
       ich.append(o);
     });
     ich.value = zustand.ichBinId;
@@ -418,9 +559,7 @@
      ========================================================== */
 
   function ansichtWechseln(name) {
-    document.querySelectorAll('.view').forEach(v => {
-      v.hidden = v.id !== 'view-' + name;
-    });
+    document.querySelectorAll('.view').forEach(v => { v.hidden = v.id !== 'view-' + name; });
     document.querySelectorAll('.tab').forEach(t => {
       t.classList.toggle('aktiv', t.dataset.view === name);
     });
@@ -428,6 +567,18 @@
 
   document.querySelectorAll('.tab').forEach(t => {
     t.onclick = () => { ansichtWechseln(t.dataset.view); window.scrollTo(0, 0); };
+  });
+
+  $('setup-knopf').onclick = () => { ansichtWechseln('einstellungen'); window.scrollTo(0, 0); };
+
+  $('f-mehr-schalter').onclick = () => {
+    $('f-mehr').hidden = false;
+    $('f-mehr-schalter').hidden = true;
+  };
+
+  ['f-betrag', 'f-datum', 'f-bis'].forEach(id => {
+    $(id).addEventListener('input', verteilHinweis);
+    $(id).addEventListener('change', verteilHinweis);
   });
 
   /* Ausgabe speichern (neu oder geaendert) */
@@ -440,25 +591,29 @@
       return;
     }
 
+    const von = $('f-datum').value || Store.heuteAlsText();
+    let bis = $('f-bis').value || '';
+    if (bis && bis <= von) bis = '';
+
     const id = $('f-id').value;
     const daten = {
       betrag,
       kategorie: formKategorie,
-      datum: $('f-datum').value || Store.heuteAlsText(),
+      datum: von,
+      bisDatum: bis,
       notiz: $('f-notiz').value.trim(),
-      bezahltVon: $('f-bezahlt').value,
+      bezahltVon: $('f-bezahlt').value || zustand.ichBinId,
       geteiltMit: [...formGeteilt]
     };
 
     if (id) {
-      const vorhanden = zustand.ausgaben.find(a => a.id === id);
-      Object.assign(vorhanden, daten);
+      Object.assign(zustand.ausgaben.find(a => a.id === id), daten);
       melden('Änderung gespeichert');
     } else {
-      zustand.ausgaben.push(Object.assign({
-        id: Store.neueId(), angelegt: Date.now()
-      }, daten));
-      melden(geld(betrag) + ' eingetragen');
+      zustand.ausgaben.push(Object.assign({ id: Store.neueId(), angelegt: Date.now() }, daten));
+      melden(bis
+        ? geld(betrag) + ' auf ' + tage(Budget.tageZwischen(von, bis)) + ' verteilt'
+        : geld(betrag) + ' eingetragen');
     }
     formularLeeren();
     speichern();
@@ -475,18 +630,47 @@
     melden('Ausgabe gelöscht');
   };
 
-  /* Einstellungen – jede Änderung wird sofort übernommen */
-  $('e-reise').oninput    = () => { zustand.reise.name = $('e-reise').value; Store.sichern(zustand); zeichneKopf(); };
-  $('e-start').onchange   = () => { zustand.reise.start = $('e-start').value; speichern(); };
-  $('e-ende').onchange    = () => { zustand.reise.ende  = $('e-ende').value;  speichern(); };
-  $('e-budget').onchange  = () => {
-    zustand.reise.tagesbudget = betragLesen($('e-budget').value) || 0;
+  /* --- Einstellungen: jede Änderung wird sofort übernommen --- */
+
+  $('e-reise').oninput = () => {
+    zustand.reise.name = $('e-reise').value;
+    Store.sichern(zustand);
+    $('kopf-reise').textContent = zustand.reise.name || 'Meine Reise';
+  };
+
+  /* Start, Ende und Dauer haengen zusammen. Aenderst du eines,
+     wird das jeweils passende andere neu berechnet. */
+  $('e-start').onchange = () => {
+    const neu = $('e-start').value;
+    const dauer = parseInt($('e-dauer').value, 10);
+    zustand.reise.start = neu;
+    if (neu && dauer > 0) zustand.reise.ende = Budget.tagVerschieben(neu, dauer - 1);
     speichern();
   };
+
+  $('e-ende').onchange = () => {
+    zustand.reise.ende = $('e-ende').value;
+    speichern();
+  };
+
+  $('e-dauer').onchange = () => {
+    const dauer = parseInt($('e-dauer').value, 10);
+    if (dauer > 0 && zustand.reise.start) {
+      zustand.reise.ende = Budget.tagVerschieben(zustand.reise.start, dauer - 1);
+    }
+    speichern();
+  };
+
+  $('e-gesamt').onchange = () => {
+    zustand.reise.gesamtbudget = betragLesen($('e-gesamt').value) || 0;
+    speichern();
+  };
+
   $('e-waehrung').onchange = () => {
     zustand.reise.waehrung = $('e-waehrung').value.trim() || '€';
     speichern();
   };
+
   $('e-ich').onchange = () => { zustand.ichBinId = $('e-ich').value; speichern(); };
 
   $('e-person-hinzu').onclick = () => {
@@ -503,7 +687,8 @@
     if (e.key === 'Enter') { e.preventDefault(); $('e-person-hinzu').click(); }
   });
 
-  /* Sicherung: Datei rausschreiben bzw. einlesen */
+  /* --- Sicherung --- */
+
   $('e-export').onclick = () => {
     const blob = new Blob([JSON.stringify(zustand, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');

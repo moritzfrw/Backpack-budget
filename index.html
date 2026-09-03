@@ -16,117 +16,120 @@
     <span class="logo">◈</span>
     <div>
       <div class="kopf-titel" id="kopf-reise">Meine Reise</div>
-      <div class="kopf-sub" id="kopf-person">–</div>
+      <div class="kopf-sub" id="kopf-fortschritt">Noch nicht eingerichtet</div>
     </div>
   </div>
 </header>
 
 <main>
 
-  <!-- ---------- ÜBERSICHT ---------- -->
-  <section class="view" id="view-uebersicht">
+  <!-- ================= HEUTE ================= -->
+  <section class="view" id="view-heute">
 
-    <div class="karte heute">
-      <div class="heute-label">Heute ausgegeben (dein Anteil)</div>
-      <div class="heute-betrag" id="heute-betrag">0</div>
+    <div class="karte setup" id="setup-karte" hidden>
+      <div class="setup-titel">Richte zuerst deine Reise ein</div>
+      <p class="hinweis">Sag der App, wie lange du unterwegs bist und wie viel Geld du
+        dafür hast. Daraus rechnet sie aus, wie viel du pro Tag ausgeben darfst.</p>
+      <button type="button" class="knopf primaer" id="setup-knopf">Reise einrichten</button>
+    </div>
+
+    <div class="karte heute" id="heute-karte" hidden>
+      <div class="heute-label">Heute verfügbar</div>
+      <div class="heute-betrag" id="heute-betrag">–</div>
       <div class="balken"><div class="balken-fuell" id="heute-balken"></div></div>
-      <div class="heute-fuss" id="heute-fuss">Kein Tagesbudget gesetzt</div>
+      <div class="heute-fuss" id="heute-fuss"></div>
+      <div class="rat" id="heute-rat"></div>
     </div>
-
-    <div class="kachel-reihe">
-      <div class="karte kachel">
-        <div class="kachel-label">Diese Woche</div>
-        <div class="kachel-wert" id="woche-betrag">0</div>
-        <div class="kachel-sub" id="woche-sub">–</div>
-      </div>
-      <div class="karte kachel">
-        <div class="kachel-label">Reise gesamt</div>
-        <div class="kachel-wert" id="gesamt-betrag">0</div>
-        <div class="kachel-sub" id="gesamt-sub">–</div>
-      </div>
-    </div>
-
-    <div class="karte" id="karte-reichweite">
-      <div class="kachel-label">Reichweite</div>
-      <div class="reichweite-wert" id="reichweite-wert">–</div>
-      <div class="kachel-sub" id="reichweite-sub"></div>
-    </div>
-
-    <div class="karte">
-      <div class="kachel-label">Wohin dein Geld geht</div>
-      <div id="kategorie-liste" class="kat-liste"></div>
-    </div>
-
-  </section>
-
-  <!-- ---------- AUSGABEN ---------- -->
-  <section class="view" id="view-ausgaben" hidden>
 
     <form class="karte formular" id="formular">
       <input type="hidden" id="f-id">
 
-      <label class="feld-label" for="f-betrag">Betrag</label>
+      <label class="feld-label" for="f-betrag">Was hast du ausgegeben?</label>
       <div class="betrag-zeile">
         <input class="betrag-eingabe" id="f-betrag" type="text" inputmode="decimal"
                placeholder="0,00" autocomplete="off" required>
         <span class="waehrung" id="f-waehrung">€</span>
       </div>
 
-      <label class="feld-label">Kategorie</label>
-      <div class="chips" id="f-kategorien"></div>
+      <div class="kat-kacheln" id="f-kategorien"></div>
 
-      <div class="zwei-spalten">
-        <div>
-          <label class="feld-label" for="f-datum">Datum</label>
-          <input id="f-datum" type="date" required>
+      <button type="button" class="mehr-schalter" id="f-mehr-schalter">
+        Mehr Angaben <span>▾</span>
+      </button>
+
+      <div class="mehr-panel" id="f-mehr" hidden>
+        <div class="zwei-spalten">
+          <div>
+            <label class="feld-label" for="f-datum">Datum</label>
+            <input id="f-datum" type="date">
+          </div>
+          <div>
+            <label class="feld-label" for="f-bis">Gebucht bis</label>
+            <input id="f-bis" type="date">
+          </div>
         </div>
-        <div>
+        <div class="verteil-hinweis" id="f-verteil" hidden></div>
+
+        <label class="feld-label" for="f-notiz">Notiz</label>
+        <input id="f-notiz" type="text" placeholder="z.B. Hostel Hanoi" autocomplete="off">
+
+        <div id="f-gruppe" hidden>
           <label class="feld-label" for="f-bezahlt">Bezahlt von</label>
           <select id="f-bezahlt"></select>
+          <label class="feld-label">Geteilt mit</label>
+          <div class="chips" id="f-geteilt"></div>
         </div>
       </div>
 
-      <label class="feld-label">Geteilt mit</label>
-      <div class="chips" id="f-geteilt"></div>
-
-      <label class="feld-label" for="f-notiz">Notiz (optional)</label>
-      <input id="f-notiz" type="text" placeholder="z.B. Nachtbus nach Hanoi" autocomplete="off">
-
       <div class="formular-knoepfe">
-        <button type="submit" class="knopf primaer" id="f-speichern">Ausgabe eintragen</button>
+        <button type="submit" class="knopf primaer" id="f-speichern">Eintragen</button>
         <button type="button" class="knopf still" id="f-abbrechen" hidden>Abbrechen</button>
         <button type="button" class="knopf loeschen" id="f-loeschen" hidden>Löschen</button>
       </div>
     </form>
 
-    <div class="listen-kopf">
-      <span id="ausgaben-anzahl">Noch keine Ausgaben</span>
-    </div>
-    <div id="ausgaben-liste"></div>
+    <div class="listen-kopf" id="heute-kopf" hidden>Heute angerechnet</div>
+    <div id="heute-liste"></div>
 
   </section>
 
-  <!-- ---------- ABRECHNUNG ---------- -->
-  <section class="view" id="view-abrechnung" hidden>
+  <!-- ================= AUSGABEN ================= -->
+  <section class="view" id="view-ausgaben" hidden>
+    <div class="listen-kopf" id="ausgaben-anzahl">Noch keine Ausgaben</div>
+    <div id="ausgaben-liste"></div>
+  </section>
+
+  <!-- ================= AUSWERTUNG ================= -->
+  <section class="view" id="view-auswertung" hidden>
 
     <div class="karte">
-      <div class="kachel-label">Stand der Reisekasse</div>
-      <div id="salden-liste" class="salden"></div>
+      <div class="kachel-label">Reicht dein Geld?</div>
+      <div class="prognose-wert" id="prognose-wert">–</div>
+      <div class="kachel-sub" id="prognose-sub"></div>
+      <div class="zahlen-gitter" id="prognose-zahlen"></div>
     </div>
 
     <div class="karte">
+      <div class="kachel-label">Wofür du dein Geld ausgibst</div>
+      <div id="kategorie-liste" class="kat-liste"></div>
+    </div>
+
+    <div class="karte" id="karte-reisekasse" hidden>
+      <div class="kachel-label">Stand der Reisekasse</div>
+      <div id="salden-liste" class="salden"></div>
+      <div class="trenner"></div>
       <div class="kachel-label">Ausgleich – wer zahlt wem</div>
       <div id="ausgleich-liste" class="ausgleich"></div>
     </div>
 
   </section>
 
-  <!-- ---------- EINSTELLUNGEN ---------- -->
+  <!-- ================= EINSTELLUNGEN ================= -->
   <section class="view" id="view-einstellungen" hidden>
 
     <div class="karte">
-      <div class="kachel-label">Reise</div>
-      <label class="feld-label" for="e-reise">Name</label>
+      <div class="kachel-label">1. Wie lange reist du?</div>
+      <label class="feld-label" for="e-reise">Name der Reise</label>
       <input id="e-reise" type="text" placeholder="Südostasien 2026">
 
       <div class="zwei-spalten">
@@ -140,10 +143,18 @@
         </div>
       </div>
 
+      <label class="feld-label" for="e-dauer">…oder einfach die Dauer in Tagen</label>
+      <input id="e-dauer" type="text" inputmode="numeric" placeholder="120">
+      <p class="hinweis mini">Beides hängt zusammen: änderst du das eine, rechnet die App
+        das andere aus.</p>
+    </div>
+
+    <div class="karte">
+      <div class="kachel-label">2. Wie viel Geld hast du?</div>
       <div class="zwei-spalten">
         <div>
-          <label class="feld-label" for="e-budget">Tagesbudget pro Person</label>
-          <input id="e-budget" type="text" inputmode="decimal" placeholder="40">
+          <label class="feld-label" for="e-gesamt">Gesamtbudget</label>
+          <input id="e-gesamt" type="text" inputmode="decimal" placeholder="5000">
         </div>
         <div>
           <label class="feld-label" for="e-waehrung">Währung</label>
@@ -152,20 +163,31 @@
       </div>
     </div>
 
+    <div class="karte ergebnis-karte">
+      <div class="kachel-label">3. Dein Tagesbudget</div>
+      <div class="ergebnis-wert" id="e-ergebnis">–</div>
+      <div class="kachel-sub" id="e-ergebnis-sub">Trag oben Zeitraum und Budget ein.</div>
+    </div>
+
     <div class="karte">
       <div class="kachel-label">Mitreisende</div>
+      <p class="hinweis mini">Nur nötig, wenn ihr eine gemeinsame Kasse führt. Reist du
+        allein, lass es einfach so.</p>
       <div id="e-personen" class="personen"></div>
       <div class="zeile-eingabe">
         <input id="e-neue-person" type="text" placeholder="Name" autocomplete="off">
         <button type="button" class="knopf klein" id="e-person-hinzu">Hinzufügen</button>
       </div>
-      <label class="feld-label" for="e-ich">Das bin ich</label>
-      <select id="e-ich"></select>
+      <div id="e-ich-block" hidden>
+        <label class="feld-label" for="e-ich">Das bin ich</label>
+        <select id="e-ich"></select>
+      </div>
     </div>
 
     <div class="karte">
       <div class="kachel-label">Daten</div>
-      <p class="hinweis">Alles wird nur in diesem Browser gespeichert. Sichere dir regelmäßig eine Kopie.</p>
+      <p class="hinweis">Alles wird nur in diesem Browser gespeichert. Sichere dir
+        regelmäßig eine Kopie.</p>
       <div class="formular-knoepfe">
         <button type="button" class="knopf still" id="e-export">Sicherung speichern</button>
         <button type="button" class="knopf still" id="e-import">Sicherung laden</button>
@@ -179,9 +201,9 @@
 </main>
 
 <nav class="tabbar">
-  <button class="tab aktiv" data-view="uebersicht"><span>◐</span>Übersicht</button>
-  <button class="tab" data-view="ausgaben"><span>＋</span>Ausgaben</button>
-  <button class="tab" data-view="abrechnung"><span>⇄</span>Abrechnung</button>
+  <button class="tab aktiv" data-view="heute"><span>◐</span>Heute</button>
+  <button class="tab" data-view="ausgaben"><span>≡</span>Ausgaben</button>
+  <button class="tab" data-view="auswertung"><span>◍</span>Auswertung</button>
   <button class="tab" data-view="einstellungen"><span>⚙</span>Einstellungen</button>
 </nav>
 
