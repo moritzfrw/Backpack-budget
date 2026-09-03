@@ -9,6 +9,11 @@
 
 (function () {
 
+  /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
+     sieht, welche Fassung auf dem Handy laeuft. Bei jeder
+     Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
+  const APP_VERSION = 'v9';
+
   let zustand = Store.laden();
 
   /* Merker fuer das Eingabefeld */
@@ -640,6 +645,8 @@
       }
       personen.append(tag);
     });
+
+    $('e-version').textContent = 'Backpack Budget ' + APP_VERSION;
 
     $('e-ich-block').hidden = zustand.personen.length < 2;
     const ich = $('e-ich');
