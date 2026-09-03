@@ -86,14 +86,41 @@ Essen & Trinken · Fortbewegung · Unterkunft · Aktivitäten · Sonstiges
 Sie stehen ganz oben in `js/store.js` und lassen sich dort in einer Zeile ändern
 oder ergänzen.
 
-## Wichtig zu wissen
+## Wo die Daten liegen – und wie du sie nicht verlierst
 
-Die Daten liegen **nur im Browser, in dem du sie einträgst**. Laptop-Browser und
-Handy-Browser sind zwei getrennte Töpfe – sie gleichen sich nicht ab. Entscheide
-dich für ein Gerät und trag dort alles ein.
+Die Ausgaben liegen im **localStorage** des Browsers, in dem du sie einträgst.
+Das ist ein Speicher, den die Webseite auf dem Gerät selbst anlegt. Nichts davon
+geht übers Internet, niemand außer dir sieht die Zahlen – auch GitHub nicht.
+Dort liegt nur der Programmcode.
 
-Deshalb: unter *Einstellungen → Daten → Sicherung speichern* regelmäßig eine
-Kopie ziehen. Die Datei kannst du auf jedem Gerät wieder einlesen.
+Das hat eine Kehrseite: **Laptop-Browser und Handy-Browser sind zwei getrennte
+Töpfe.** Sie gleichen sich nicht ab. Entscheide dich für ein Gerät und trag dort
+alles ein.
+
+### Was den Speicher leeren kann
+
+| Auslöser | Risiko |
+|---|---|
+| Handy verloren, gestohlen, kaputt | **hoch** – der einzige wirklich gefährliche Fall |
+| „Verlauf und Websitedaten löschen" im Browser | hoch, aber du müsstest es selbst auslösen |
+| iOS räumt bei extremem Speichermangel auf | gering |
+| Safaris 7-Tage-Regel für Website-Daten | trifft dich **nicht**, solange die App vom Home-Bildschirm läuft und du sie benutzt |
+
+### Die Absicherung
+
+Die App erinnert dich von selbst. Ist die letzte Sicherung **7 Tage** her (oder
+gab es noch nie eine), erscheint oben auf dem Heute-Bildschirm eine Karte mit
+*Jetzt sichern*. Ein Tipp darauf öffnet am Handy das System-Teilen-Menü – von
+dort legst du die Datei nach iCloud oder Google Drive, schickst sie dir per Mail
+oder wirfst sie in einen Chat mit dir selbst. Am Laptop lädt sie stattdessen
+normal herunter.
+
+Die Datei enthält **alles**: Reisedaten, Budget, Rücklagen, jede einzelne
+Ausgabe, Mitreisende. Über *Einstellungen → Sicherung laden* stellst du damit auf
+jedem Gerät den kompletten Stand wieder her.
+
+Merksatz: **Eine Sicherung, die auf demselben Handy liegt, ist keine Sicherung.**
+Sie muss woanders hin.
 
 ## Wie der Code aufgebaut ist
 

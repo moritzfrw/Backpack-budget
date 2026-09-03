@@ -49,7 +49,10 @@ const Store = (function () {
       ausgaben: [],
       /* Geld, das fuer etwas Bestimmtes weggelegt wird und deshalb
          nie im Tagesbudget auftaucht – z.B. ein Flug. */
-      ruecklagen: []
+      ruecklagen: [],
+      /* Wann zuletzt eine Sicherung aus der App geholt wurde.
+         0 = noch nie. Daraus baut die App ihre Erinnerung. */
+      letzteSicherung: 0
     };
   }
 
@@ -81,6 +84,7 @@ const Store = (function () {
     d.personen = Array.isArray(d.personen) && d.personen.length ? d.personen : s.personen;
     d.ausgaben = Array.isArray(d.ausgaben) ? d.ausgaben : [];
     d.ruecklagen = Array.isArray(d.ruecklagen) ? d.ruecklagen : [];
+    d.letzteSicherung = Number(d.letzteSicherung) || 0;
 
     /* Version 1 kannte nur ein von Hand gesetztes Tagesbudget.
        Daraus machen wir ein Gesamtbudget. */

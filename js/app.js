@@ -55,6 +55,7 @@
   }
 
   function tage(n) { return n + (n === 1 ? ' Tag' : ' Tage'); }
+  function eintraege(n) { return n + (n === 1 ? ' Eintrag' : ' Einträge'); }
 
   function person(id) {
     return zustand.personen.find(p => p.id === id) || { id, name: '?' };
@@ -102,7 +103,48 @@
 
   /* ---------- Heute ---------- */
 
+  /* Wie viele Tage ist die letzte Sicherung her? null = noch nie. */
+  function sicherungAlterTage() {
+    if (!zustand.letzteSicherung) return null;
+    return Math.floor((Date.now() - zustand.letzteSicherung) / 86400000);
+  }
+
+  const SICHERUNG_FAELLIG_NACH = 7;
+
+  function zeichneSicherung() {
+    const alter = sicherungAlterTage();
+    const karte = $('sicherung-karte');
+
+    /* Ohne Eintraege gibt es nichts zu sichern – dann schweigt die App. */
+    const faellig = zustand.ausgaben.length > 0 &&
+                    (alter === null || alter >= SICHERUNG_FAELLIG_NACH);
+    karte.hidden = !faellig;
+
+    if (faellig) {
+      $('sicherung-titel').textContent = alter === null
+        ? 'Noch nie gesichert' : 'Sicherung fällig';
+      $('sicherung-text').textContent = (alter === null
+        ? 'Du hast ' + eintraege(zustand.ausgaben.length) + ', aber noch keine Sicherung. '
+        : 'Deine letzte Sicherung ist ' + tage(alter) + ' her. ') +
+        'Deine Daten liegen nur auf diesem Gerät. Hol dir eine Kopie und leg sie ' +
+        'in iCloud, Google Drive oder schick sie dir selbst per Mail.';
+    }
+
+    const stand = $('e-sicherung-stand');
+    if (alter === null) {
+      stand.textContent = zustand.ausgaben.length
+        ? 'Noch nie gesichert.' : 'Noch nichts einzutragen.';
+    } else if (alter === 0) {
+      stand.textContent = 'Zuletzt gesichert: heute.';
+    } else {
+      /* "vor 8 Tagen" – Dativ, deshalb nicht der tage()-Helfer. */
+      stand.textContent = 'Zuletzt gesichert: vor ' + alter +
+        (alter === 1 ? ' Tag.' : ' Tagen.');
+    }
+  }
+
   function zeichneHeute(p) {
+    zeichneSicherung();
     $('setup-karte').hidden = p.eingerichtet;
     $('heute-karte').hidden = !p.eingerichtet;
     if (p.eingerichtet) {
@@ -332,8 +374,7 @@
       a.datum === b.datum ? b.angelegt - a.angelegt : (a.datum < b.datum ? 1 : -1));
 
     $('ausgaben-anzahl').textContent = alle.length
-      ? alle.length + (alle.length === 1 ? ' Eintrag' : ' Einträge')
-      : 'Noch keine Ausgaben';
+      ? eintraege(alle.length) : 'Noch keine Ausgaben';
 
     if (!alle.length) {
       liste.append(el('div', 'leer', 'Trag deine erste Ausgabe auf dem Heute-Bildschirm ein.'));
@@ -799,15 +840,50 @@
 
   /* --- Sicherung --- */
 
-  $('e-export').onclick = () => {
-    const blob = new Blob([JSON.stringify(zustand, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'backpack-budget-' + Store.heuteAlsText() + '.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    melden('Sicherung gespeichert');
-  };
+  /* Sicherung herausgeben.
+
+     Am Handy geht das ueber das System-Teilen-Menue: von dort kannst
+     du die Datei nach iCloud oder Google Drive legen, sie dir selbst
+     per Mail schicken oder in einen Chat werfen. Ein reiner Download
+     ist am Handy oft eine Sackgasse, weil die Datei irgendwo im
+     Dateien-Ordner verschwindet.
+
+     Kann der Browser das nicht (typisch am Laptop), faellt die
+     Funktion auf einen normalen Download zurueck. */
+  async function sicherungHolen() {
+    const inhalt = JSON.stringify(zustand, null, 2);
+    const name = 'backpack-budget-' + Store.heuteAlsText() + '.json';
+    let erledigt = false;
+
+    try {
+      const datei = new File([inhalt], name, { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [datei] })) {
+        await navigator.share({ files: [datei], title: 'Backpack Budget – Sicherung' });
+        erledigt = true;
+      }
+    } catch (e) {
+      /* Hat der Nutzer das Teilen-Menue nur weggewischt, gilt die
+         Sicherung nicht als erledigt – sonst wiegt ihn die App in
+         falscher Sicherheit. */
+      if (e && e.name === 'AbortError') return;
+    }
+
+    if (!erledigt) {
+      const blob = new Blob([inhalt], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    zustand.letzteSicherung = Date.now();
+    speichern();
+    melden('Sicherung erstellt – leg sie an einen sicheren Ort');
+  }
+
+  $('e-export').onclick = sicherungHolen;
+  $('sicherung-knopf').onclick = sicherungHolen;
 
   $('e-import').onclick = () => $('e-datei').click();
   $('e-datei').onchange = e => {
@@ -823,6 +899,10 @@
            Sicherung durch dieselbe Pruefung wie alle anderen Daten. */
         Store.sichern(daten);
         zustand = Store.laden();
+        /* Die geladene Datei ist selbst die Sicherung – der Stand
+           gilt ab jetzt als gesichert. */
+        zustand.letzteSicherung = Date.now();
+        Store.sichern(zustand);
         formGeteilt = new Set();
         formularLeeren();
         zeichnen();

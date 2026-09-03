@@ -26,6 +26,12 @@
   <!-- ================= HEUTE ================= -->
   <section class="view" id="view-heute">
 
+    <div class="karte sicherung" id="sicherung-karte" hidden>
+      <div class="sicherung-titel" id="sicherung-titel">Sicherung fällig</div>
+      <p class="hinweis" id="sicherung-text"></p>
+      <button type="button" class="knopf primaer" id="sicherung-knopf">Jetzt sichern</button>
+    </div>
+
     <div class="karte setup" id="setup-karte" hidden>
       <div class="setup-titel">Richte zuerst deine Reise ein</div>
       <p class="hinweis">Sag der App, wie lange du unterwegs bist und wie viel Geld du
@@ -207,10 +213,13 @@
 
     <div class="karte">
       <div class="kachel-label">Daten</div>
-      <p class="hinweis">Alles wird nur in diesem Browser gespeichert. Sichere dir
-        regelmäßig eine Kopie.</p>
+      <p class="hinweis">Deine Ausgaben liegen nur auf diesem Gerät – sie gehen nie
+        übers Internet. Das heißt aber auch: Handy weg, Daten weg. Hol dir deshalb
+        regelmäßig eine Sicherung und leg sie in iCloud, Google Drive oder schick
+        sie dir selbst per Mail.</p>
+      <div class="sicherung-stand" id="e-sicherung-stand"></div>
       <div class="formular-knoepfe">
-        <button type="button" class="knopf still" id="e-export">Sicherung speichern</button>
+        <button type="button" class="knopf still" id="e-export">Sicherung holen</button>
         <button type="button" class="knopf still" id="e-import">Sicherung laden</button>
       </div>
       <input type="file" id="e-datei" accept="application/json" hidden>
