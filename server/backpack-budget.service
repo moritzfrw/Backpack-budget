@@ -1,0 +1,22 @@
+[Unit]
+Description=Backpack Budget – Speicherdienst
+After=network.target
+
+[Service]
+Type=simple
+User=budget
+Group=budget
+WorkingDirectory=/opt/backpack-budget-server
+ExecStart=/usr/bin/python3 /opt/backpack-budget-server/speicher.py
+Restart=always
+RestartSec=5
+
+# Der Dienst braucht nichts vom System ausser seinem eigenen Ordner.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/backpack-budget-server
+
+[Install]
+WantedBy=multi-user.target

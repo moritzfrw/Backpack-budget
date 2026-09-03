@@ -21,6 +21,11 @@
   </div>
 </header>
 
+<div class="sync-leiste" id="sync-leiste" hidden>
+  <span class="sync-punkt" id="sync-punkt"></span>
+  <span id="sync-text"></span>
+</div>
+
 <main>
 
   <!-- ================= HEUTE ================= -->
@@ -212,6 +217,28 @@
     </div>
 
     <div class="karte">
+      <div class="kachel-label">Abgleich mit deinem Server</div>
+      <p class="hinweis mini">Ohne das läuft die App vollständig weiter – die Daten
+        liegen dann nur auf diesem Gerät. Mit Server-Abgleich wird jede Änderung
+        zusätzlich dorthin geschrieben und überlebt auch ein verlorenes Handy.</p>
+      <div class="sync-stand" id="e-sync-stand"></div>
+
+      <label class="feld-label" for="e-sync-adresse">Adresse</label>
+      <input id="e-sync-adresse" type="text" placeholder="https://…" autocomplete="off"
+             autocapitalize="off" spellcheck="false">
+
+      <label class="feld-label" for="e-sync-schluessel">Zugangsschlüssel</label>
+      <input id="e-sync-schluessel" type="password" placeholder="einmal eintragen"
+             autocomplete="off" autocapitalize="off" spellcheck="false">
+
+      <div class="formular-knoepfe">
+        <button type="button" class="knopf primaer" id="e-sync-verbinden">Verbinden</button>
+        <button type="button" class="knopf still" id="e-sync-jetzt">Jetzt abgleichen</button>
+      </div>
+      <button type="button" class="knopf gefahr" id="e-sync-trennen" hidden>Verbindung trennen</button>
+    </div>
+
+    <div class="karte">
       <div class="kachel-label">Daten</div>
       <p class="hinweis">Deine Ausgaben liegen nur auf diesem Gerät – sie gehen nie
         übers Internet. Das heißt aber auch: Handy weg, Daten weg. Hol dir deshalb
@@ -241,6 +268,7 @@
 
 <script src="js/store.js"></script>
 <script src="js/budget.js"></script>
+<script src="js/sync.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

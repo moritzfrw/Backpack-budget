@@ -61,7 +61,19 @@
     return zustand.personen.find(p => p.id === id) || { id, name: '?' };
   }
 
+  /* Nach einer Aenderung durch dich: Zeitstempel hochsetzen, lokal
+     sichern, und den Server nachziehen lassen. */
   function speichern() {
+    zustand.stand = Date.now();
+    Store.sichern(zustand);
+    zeichnen();
+    schickenSpaeter();
+  }
+
+  /* Sichern OHNE den Zeitstempel anzufassen. Gebraucht, wenn wir
+     gerade den Stand vom Server uebernommen haben – der ist ja
+     nicht neu, sondern nur neu hier. */
+  function nurSichern() {
     Store.sichern(zustand);
     zeichnen();
   }
@@ -109,7 +121,11 @@
     return Math.floor((Date.now() - zustand.letzteSicherung) / 86400000);
   }
 
-  const SICHERUNG_FAELLIG_NACH = 7;
+  /* Ohne Server: woechentlich erinnern. Mit Server-Abgleich und
+     dessen taeglichen Sicherungen waere das Nörgeln uebertrieben. */
+  function sicherungIntervall() {
+    return Sync.eingerichtet() ? 30 : 7;
+  }
 
   function zeichneSicherung() {
     const alter = sicherungAlterTage();
@@ -117,7 +133,7 @@
 
     /* Ohne Eintraege gibt es nichts zu sichern – dann schweigt die App. */
     const faellig = zustand.ausgaben.length > 0 &&
-                    (alter === null || alter >= SICHERUNG_FAELLIG_NACH);
+                    (alter === null || alter >= sicherungIntervall());
     karte.hidden = !faellig;
 
     if (faellig) {
@@ -687,6 +703,161 @@
   }
 
   /* ==========================================================
+     Abgleich mit dem Server
+
+     Grundregel: Die lokale Kopie ist immer die, mit der du
+     arbeitest. Der Server ist das Netz darunter. Faellt er aus,
+     merkst du beim Eintragen nichts.
+     ========================================================== */
+
+  let syncStatus = 'aus';       /* aus | laeuft | ok | fehler | wartet */
+  let syncMeldung = '';
+  let syncUhr = null;
+  let syncLaeuft = false;
+
+  function syncSetzen(status, meldung) {
+    syncStatus = status;
+    syncMeldung = meldung || '';
+    zeichneSyncLeiste();
+  }
+
+  function zeichneSyncLeiste() {
+    const leiste = $('sync-leiste');
+    leiste.hidden = !Sync.eingerichtet();
+    if (leiste.hidden) return;
+    $('sync-punkt').className = 'sync-punkt ' +
+      ({ laeuft: 'laeuft', ok: 'ok', fehler: 'fehler', wartet: 'fehler' }[syncStatus] || '');
+    $('sync-text').textContent = syncMeldung || 'Abgleich eingerichtet';
+  }
+
+  /* Nach einer Aenderung nicht sofort losschicken, sondern kurz
+     warten. Wer drei Ausgaben hintereinander eintraegt, loest sonst
+     drei Uebertragungen aus. */
+  function schickenSpaeter() {
+    if (!Sync.eingerichtet()) return;
+    clearTimeout(syncUhr);
+    syncUhr = setTimeout(schickenJetzt, 1500);
+  }
+
+  async function schickenJetzt() {
+    if (!Sync.eingerichtet() || syncLaeuft) return;
+    syncLaeuft = true;
+    syncSetzen('laeuft', 'Wird übertragen …');
+    try {
+      await Sync.schicken(zustand);
+      Sync.konfigSichern({ letzterSync: zustand.stand, letzterErfolg: Date.now() });
+      syncSetzen('ok', 'Gespeichert auf dem Server');
+    } catch (e) {
+      /* Kein Drama: lokal ist alles da, wir versuchen es beim
+         naechsten Mal wieder. */
+      syncSetzen('wartet', 'Nicht übertragen – ' + e.message);
+    } finally {
+      syncLaeuft = false;
+    }
+  }
+
+  /* Der eigentliche Abgleich beim Start und auf Knopfdruck. */
+  async function abgleichen(vomNutzer) {
+    if (!Sync.eingerichtet() || syncLaeuft) return;
+    syncLaeuft = true;
+    syncSetzen('laeuft', 'Wird abgeglichen …');
+    try {
+      const antwort = await Sync.holen();
+      const server = antwort.leer ? null : antwort.zustand;
+      const letzter = Number(Sync.konfig().letzterSync) || 0;
+      const lokal = Number(zustand.stand) || 0;
+      const fremd = server ? (Number(server.stand) || 0) : -1;
+
+      if (!server) {
+        await Sync.schicken(zustand);
+        Sync.konfigSichern({ letzterSync: lokal, letzterErfolg: Date.now() });
+        syncSetzen('ok', 'Erstmalig auf den Server geschrieben');
+
+      } else if (fremd === lokal) {
+        Sync.konfigSichern({ letzterSync: lokal, letzterErfolg: Date.now() });
+        syncSetzen('ok', 'Alles auf dem gleichen Stand');
+
+      } else if (lokal > letzter && fremd > letzter) {
+        /* Beide Seiten haben sich seit dem letzten Abgleich
+           geaendert. Hier NICHT stillschweigend ueberschreiben –
+           genau so verliert man Daten. */
+        konfliktLoesen(server);
+
+      } else if (fremd > lokal) {
+        uebernehmen(server);
+        syncSetzen('ok', 'Neueren Stand vom Server geholt');
+
+      } else {
+        await Sync.schicken(zustand);
+        Sync.konfigSichern({ letzterSync: lokal, letzterErfolg: Date.now() });
+        syncSetzen('ok', 'Server nachgezogen');
+      }
+    } catch (e) {
+      syncSetzen('fehler', e.message);
+      if (vomNutzer) melden(e.message);
+    } finally {
+      syncLaeuft = false;
+      zeichneEinstellungenSync();
+    }
+  }
+
+  function uebernehmen(server) {
+    Store.sichern(server);
+    zustand = Store.laden();
+    Sync.konfigSichern({ letzterSync: zustand.stand, letzterErfolg: Date.now() });
+    formGeteilt = new Set();
+    formularLeeren();
+    nurSichern();
+  }
+
+  function konfliktLoesen(server) {
+    const wann = t => t ? new Date(t).toLocaleString('de-DE',
+      { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'unbekannt';
+    const frage =
+      'Auf beiden Seiten wurde etwas geändert, seit zuletzt abgeglichen wurde.\n\n' +
+      'Auf diesem Gerät: ' + eintraege((zustand.ausgaben || []).length) +
+      ', zuletzt ' + wann(zustand.stand) + '\n' +
+      'Auf dem Server:   ' + eintraege((server.ausgaben || []).length) +
+      ', zuletzt ' + wann(server.stand) + '\n\n' +
+      'OK = Server-Stand übernehmen (dieses Gerät wird überschrieben)\n' +
+      'Abbrechen = dieses Gerät behalten (Server wird überschrieben)';
+
+    if (confirm(frage)) {
+      uebernehmen(server);
+      syncSetzen('ok', 'Server-Stand übernommen');
+      melden('Server-Stand übernommen');
+    } else {
+      zustand.stand = Date.now();
+      Store.sichern(zustand);
+      schickenJetzt();
+      melden('Dieses Gerät behalten');
+    }
+  }
+
+  function zeichneEinstellungenSync() {
+    const k = Sync.konfig();
+    const an = Sync.eingerichtet();
+    $('e-sync-trennen').hidden = !an;
+    $('e-sync-jetzt').disabled = !an;
+    if (!$('e-sync-adresse').value) $('e-sync-adresse').value = k.adresse || '';
+
+    const stand = $('e-sync-stand');
+    stand.className = 'sync-stand';
+    if (!an) {
+      stand.textContent = 'Nicht verbunden – deine Daten liegen nur auf diesem Gerät.';
+    } else if (syncStatus === 'fehler' || syncStatus === 'wartet') {
+      stand.classList.add('fehler');
+      stand.textContent = syncMeldung;
+    } else if (k.letzterErfolg) {
+      stand.classList.add('ok');
+      stand.textContent = 'Zuletzt abgeglichen: ' + new Date(k.letzterErfolg)
+        .toLocaleString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    } else {
+      stand.textContent = 'Verbunden, aber noch nie abgeglichen.';
+    }
+  }
+
+  /* ==========================================================
      Klicks und Eingaben
      ========================================================== */
 
@@ -804,6 +975,41 @@
   };
 
   $('e-ich').onchange = () => { zustand.ichBinId = $('e-ich').value; speichern(); };
+
+  $('e-sync-verbinden').onclick = async () => {
+    const adresse = Sync.adresseAufraeumen($('e-sync-adresse').value);
+    const schluessel = $('e-sync-schluessel').value.trim();
+    if (!adresse || !schluessel) { melden('Adresse und Schlüssel eintragen'); return; }
+
+    syncSetzen('laeuft', 'Verbindung wird geprüft …');
+    try {
+      /* Erst schauen, ob da ueberhaupt ein Server ist – das trennt
+         einen Tippfehler in der Adresse von einem falschen
+         Schluessel und macht die Fehlermeldung brauchbar. */
+      await Sync.erreichbar(adresse);
+      Sync.konfigSichern({ adresse, schluessel, letzterSync: 0 });
+      $('e-sync-schluessel').value = '';
+      await abgleichen(true);
+      if (syncStatus === 'ok') melden('Verbunden');
+    } catch (e) {
+      Sync.konfigLoeschen();
+      syncSetzen('fehler', e.message);
+      melden(e.message);
+    }
+    zeichneEinstellungenSync();
+    zeichneSyncLeiste();
+  };
+
+  $('e-sync-jetzt').onclick = () => abgleichen(true);
+
+  $('e-sync-trennen').onclick = () => {
+    if (!confirm('Verbindung trennen? Deine Daten bleiben auf diesem Gerät und auf dem Server, werden aber nicht mehr abgeglichen.')) return;
+    Sync.konfigLoeschen();
+    syncSetzen('aus', '');
+    zeichneEinstellungenSync();
+    zeichneSyncLeiste();
+    melden('Verbindung getrennt');
+  };
 
   $('e-r-hinzu').onclick = () => {
     const name = $('e-r-name').value.trim();
@@ -930,6 +1136,15 @@
 
   formularLeeren();
   zeichnen();
+  zeichneSyncLeiste();
+  zeichneEinstellungenSync();
+
+  if (Sync.eingerichtet()) abgleichen(false);
+
+  /* Kommt das Netz zurueck, das Liegengebliebene nachreichen. */
+  window.addEventListener('online', () => {
+    if (Sync.eingerichtet() && syncStatus !== 'ok') abgleichen(false);
+  });
 
   /* Fuers Handy: macht die App offline-faehig, sobald sie ueber
      einen Server laeuft. Beim direkten Oeffnen der Datei wird das

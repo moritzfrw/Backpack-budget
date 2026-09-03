@@ -106,7 +106,31 @@ alles ein.
 | iOS räumt bei extremem Speichermangel auf | gering |
 | Safaris 7-Tage-Regel für Website-Daten | trifft dich **nicht**, solange die App vom Home-Bildschirm läuft und du sie benutzt |
 
-### Die Absicherung
+### Abgleich mit dem eigenen Server
+
+Es gibt einen Speicherdienst auf dem Hetzner-Server (siehe
+[server/EINRICHTEN.md](server/EINRICHTEN.md)). Ist er unter *Einstellungen →
+Abgleich* eingerichtet, wandert jede Änderung zusätzlich dorthin, und der Server
+legt jede Nacht eine Kopie an, die nach sieben Tagen von selbst verschwindet.
+
+Wichtig zum Verständnis: **die App arbeitet weiter mit der lokalen Kopie.** Der
+Server ist das Netz darunter, keine Voraussetzung. Kein Empfang im Dschungel?
+Eintragen funktioniert, die Statusleiste sagt „Nicht übertragen", und beim
+nächsten Netz wird nachgereicht.
+
+Ändert sich etwas auf beiden Seiten, seit zuletzt abgeglichen wurde, überschreibt
+die App **nichts** stillschweigend, sondern fragt nach und zeigt beide Stände mit
+Datum und Anzahl der Einträge.
+
+Adresse und Zugangsschlüssel liegen in einem eigenen Fach, getrennt von den
+Reisedaten. Sie wandern deshalb nie in eine Sicherungsdatei, die man weitergibt,
+und stehen auch nicht im öffentlichen Programmcode.
+
+### Die Absicherung ohne Server
+
+Auch mit Server-Abgleich bleibt die Datei-Sicherung sinnvoll – sie ist die
+einzige Kopie, die weder am Handy noch am Server hängt. Läuft der Abgleich, fragt
+die App nur noch alle 30 Tage danach statt wöchentlich.
 
 Die App erinnert dich von selbst. Ist die letzte Sicherung **7 Tage** her (oder
 gab es noch nie eine), erscheint oben auf dem Heute-Bildschirm eine Karte mit
@@ -130,6 +154,7 @@ tauschen kann, ohne alles anzufassen:
 | Datei | Aufgabe |
 |---|---|
 | `js/store.js` | Speichern und Laden. Die einzige Stelle, die weiß, **wo** die Daten liegen. |
+| `js/sync.js` | Redet als einzige Datei mit dem Netz. Holt und schickt Datenstände, sonst nichts. |
 | `js/budget.js` | Rechnen. Tagesbudget, Rücklagen, Verteilung auf Tage, Prognose, Abrechnung. Fasst nie den Bildschirm an. |
 | `js/app.js` | Oberfläche. Holt Daten, lässt rechnen, schreibt das Ergebnis auf den Bildschirm. |
 
@@ -147,10 +172,11 @@ Reist du allein, bleiben diese Felder komplett ausgeblendet.
 
 ## Der Weg zur „richtigen App"
 
-Für eine echte gemeinsame Kasse über mehrere Handys müssen nur `laden()` und
-`sichern()` in `js/store.js` umgestellt werden – statt in den Browser-Speicher
-schreiben sie dann zu einem Server. `budget.js` und `app.js` bleiben unverändert.
+Der Server-Abgleich steht. Für eine echte **gemeinsame** Kasse über mehrere Handys
+fehlt noch das Zusammenführen: heute gewinnt bei einem Konflikt eine ganze Seite,
+weil nur ein Mensch die App benutzt. Sobald zwei Leute gleichzeitig eintragen,
+müsste stattdessen pro Ausgabe zusammengeführt werden – jede Ausgabe hat dafür
+schon eine eigene `id`.
 
-Danach folgt der Rest: Login, Reise-Einladungslink, und Zusammenführen, wenn zwei
-Leute gleichzeitig offline etwas eintragen. Das ist der eigentliche Aufwand –
-nicht das Speichern selbst.
+Dazu kämen Login und ein Einladungslink pro Reise. Das ist der eigentliche
+Aufwand, nicht das Speichern.

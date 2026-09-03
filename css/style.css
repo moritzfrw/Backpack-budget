@@ -85,6 +85,29 @@ main { max-width: 620px; margin: 0 auto; padding: 8px 18px 24px; }
 .hinweis.mini { font-size: 12.5px; margin: 8px 0 0; }
 .trenner { height: 1px; background: var(--rand); margin: 18px 0 16px; }
 
+/* ---------- Abgleich-Statusleiste ---------- */
+
+.sync-leiste {
+  max-width: 620px; margin: 0 auto; padding: 2px 18px 6px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px; color: var(--text-leise);
+}
+.sync-punkt {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--text-leise);
+}
+.sync-punkt.ok      { background: var(--akzent); }
+.sync-punkt.laeuft  { background: var(--warn); animation: pulsieren 1.1s ease-in-out infinite; }
+.sync-punkt.fehler  { background: var(--gefahr); }
+@keyframes pulsieren { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+
+.sync-stand {
+  font-size: 13px; font-weight: 550; color: var(--text-leise);
+  background: var(--grund); border-radius: 9px; padding: 9px 12px; margin-bottom: 4px;
+}
+.sync-stand.ok     { color: var(--akzent); }
+.sync-stand.fehler { color: var(--gefahr); }
+
 /* ---------- Sicherungs-Erinnerung ---------- */
 
 .sicherung { border-color: var(--warn); }

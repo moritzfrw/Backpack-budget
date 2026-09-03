@@ -1,0 +1,15 @@
+# Caddy holt und erneuert das HTTPS-Zertifikat von selbst.
+# Es gibt hier bewusst nur einen Eintrag: die Etsy-Automatisierung
+# laeuft ohne Webserver und wird davon nicht beruehrt.
+#
+# Protokolliert wird ins System-Journal, nicht in eine eigene Datei -
+# der Caddy-Dienst laeuft eingeschraenkt und darf ausserhalb seines
+# eigenen Ordners nichts anlegen. Nachlesen mit:
+#     journalctl -u caddy -n 50
+
+157-180-70-168.sslip.io {
+	encode gzip
+
+	# Alles weiterreichen an den Python-Dienst, der nur intern lauscht.
+	reverse_proxy 127.0.0.1:8477
+}

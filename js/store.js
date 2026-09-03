@@ -52,7 +52,17 @@ const Store = (function () {
       ruecklagen: [],
       /* Wann zuletzt eine Sicherung aus der App geholt wurde.
          0 = noch nie. Daraus baut die App ihre Erinnerung. */
-      letzteSicherung: 0
+      letzteSicherung: 0,
+      /* Wann dieser Datenstand zuletzt geaendert wurde. Daran
+         erkennt der Abgleich, welche Seite die neuere ist.
+
+         Bewusst 0 und nicht die aktuelle Zeit: ein frisch
+         installiertes Geraet hat nichts zu verlieren. Stuende hier
+         ein aktueller Zeitstempel, saehe es beim ersten Abgleich
+         aus, als haette man hier gerade etwas geaendert - und die
+         App wuerde unnoetig nach einem Konflikt fragen, statt
+         einfach den Stand vom Server zu holen. */
+      stand: 0
     };
   }
 
@@ -85,6 +95,7 @@ const Store = (function () {
     d.ausgaben = Array.isArray(d.ausgaben) ? d.ausgaben : [];
     d.ruecklagen = Array.isArray(d.ruecklagen) ? d.ruecklagen : [];
     d.letzteSicherung = Number(d.letzteSicherung) || 0;
+    d.stand = Number(d.stand) || 0;
 
     /* Version 1 kannte nur ein von Hand gesetztes Tagesbudget.
        Daraus machen wir ein Gesamtbudget. */
