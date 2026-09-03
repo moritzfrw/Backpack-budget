@@ -15,20 +15,21 @@ const Store = (function () {
   const SCHLUESSEL = 'backpack-budget-v1';
   const VERSION = 2;
 
-  /* Die vier Kategorien. Reihenfolge = Reihenfolge in der App. */
+  /* Die Kategorien. Reihenfolge = Reihenfolge in der App.
+     Willst du eine weitere, haeng hier einfach eine Zeile an. */
   const KATEGORIEN = [
-    { id: 'essen',      name: 'Essen & Trinken', icon: '🍜' },
-    { id: 'fortbewegung', name: 'Fortbewegung',  icon: '🚌' },
-    { id: 'unterkunft', name: 'Unterkunft',      icon: '🛏️' },
-    { id: 'aktivitaet', name: 'Aktivitäten',     icon: '🎟️' }
+    { id: 'essen',        name: 'Essen & Trinken', icon: '🍜' },
+    { id: 'fortbewegung', name: 'Fortbewegung',    icon: '🚌' },
+    { id: 'unterkunft',   name: 'Unterkunft',      icon: '🛏️' },
+    { id: 'aktivitaet',   name: 'Aktivitäten',     icon: '🎟️' },
+    { id: 'sonstiges',    name: 'Sonstiges',       icon: '🧾' }
   ];
 
   /* Alte Kategorie-Namen aus Version 1 auf die neuen abbilden,
      damit bereits eingetragene Ausgaben nicht ins Leere zeigen. */
   const ALTE_KATEGORIEN = {
     transport: 'fortbewegung',
-    einkauf:   'aktivitaet',
-    sonstiges: 'aktivitaet'
+    einkauf:   'sonstiges'
   };
 
   /* So sieht die App aus, wenn du sie zum allerersten Mal oeffnest. */

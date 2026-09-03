@@ -8,13 +8,14 @@ Läuft im Browser, ohne Internet, ohne Konto, ohne laufende Kosten.
 
 **Am Laptop:** Doppelklick auf `index.html`. Fertig.
 
-**Aufs Handy legen** (dann läuft sie offline wie eine echte App):
-Handy und Laptop müssen im selben WLAN sein.
+**Aufs Handy legen** – einmalig nötig, danach läuft sie dort eigenständig und
+ohne Internet. Handy und Laptop müssen dafür im selben WLAN sein.
 
-1. Im Terminal im Projektordner starten:
+1. Server am Laptop starten. Das `--bind 0.0.0.0` ist wichtig, sonst kommt nur
+   der Laptop selbst dran, nicht das Handy:
 
    ```bash
-   cd ~/Desktop/backpack-budget && python3 -m http.server 4173
+   cd ~/Desktop/backpack-budget && python3 -m http.server 4173 --bind 0.0.0.0
    ```
 
 2. IP-Adresse des Laptops herausfinden:
@@ -25,6 +26,14 @@ Handy und Laptop müssen im selben WLAN sein.
 
 3. Am Handy im Browser `http://<diese-IP>:4173` öffnen.
 4. iPhone: Teilen-Symbol → „Zum Home-Bildschirm". Android: Menü → „App installieren".
+5. Server am Laptop mit `Strg + C` beenden. Die App auf dem Handy läuft weiter.
+
+Beim ersten Aufruf legt der Service Worker (`sw.js`) eine Kopie der App auf dem
+Handy ab. Ab da startet sie aus dem Homescreen-Symbol, ohne WLAN, ohne Laptop.
+
+Änderst du später etwas am Code, muss das Handy einmal wieder ins selbe WLAN –
+und **die Versionsnummer oben in `sw.js` muss hochgezählt werden**, sonst zeigt
+das Handy hartnäckig die alte Fassung.
 
 ## So rechnet die App
 
@@ -54,7 +63,7 @@ morgens euphorisch und abends düster.
 
 ## Kategorien
 
-Essen & Trinken · Fortbewegung · Unterkunft · Aktivitäten
+Essen & Trinken · Fortbewegung · Unterkunft · Aktivitäten · Sonstiges
 
 Sie stehen ganz oben in `js/store.js` und lassen sich dort in einer Zeile ändern
 oder ergänzen.
