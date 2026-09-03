@@ -121,29 +121,55 @@
     return Math.floor((Date.now() - zustand.letzteSicherung) / 86400000);
   }
 
+  /* Seit wann gibt es ueberhaupt Daten? Dient als Ersatzmassstab,
+     solange noch nie gesichert wurde. */
+  function datenAlterTage() {
+    const zeiten = zustand.ausgaben.map(a => a.angelegt).filter(Boolean);
+    if (!zeiten.length) return 0;
+    return Math.floor((Date.now() - Math.min.apply(null, zeiten)) / 86400000);
+  }
+
   /* Ohne Server: woechentlich erinnern. Mit Server-Abgleich und
      dessen taeglichen Sicherungen waere das Nörgeln uebertrieben. */
   function sicherungIntervall() {
     return Sync.eingerichtet() ? 30 : 7;
   }
 
+  /* Wann die Erinnerung erscheinen soll.
+
+     Der Fall "noch nie gesichert" braucht eine Sonderbehandlung:
+     ohne Server haengt alles am Handy, da darf sofort gemahnt
+     werden. Mit Server liegen die Daten schon doppelt und werden
+     dort naechtlich kopiert - dann waere eine gelbe Karte am ersten
+     Tag blosser Laerm. Deshalb zaehlen wir in dem Fall die Tage
+     seit dem ersten Eintrag. */
+  function sicherungFaellig() {
+    if (!zustand.ausgaben.length) return false;
+    const alter = sicherungAlterTage();
+    if (alter !== null) return alter >= sicherungIntervall();
+    if (!Sync.eingerichtet()) return true;
+    return datenAlterTage() >= sicherungIntervall();
+  }
+
   function zeichneSicherung() {
     const alter = sicherungAlterTage();
     const karte = $('sicherung-karte');
-
-    /* Ohne Eintraege gibt es nichts zu sichern – dann schweigt die App. */
-    const faellig = zustand.ausgaben.length > 0 &&
-                    (alter === null || alter >= sicherungIntervall());
+    const faellig = sicherungFaellig();
     karte.hidden = !faellig;
 
     if (faellig) {
       $('sicherung-titel').textContent = alter === null
         ? 'Noch nie gesichert' : 'Sicherung fällig';
+      /* Mit Server-Abgleich waere "liegen nur auf diesem Geraet"
+         schlicht falsch - dann ist die Datei die dritte Kopie. */
       $('sicherung-text').textContent = (alter === null
         ? 'Du hast ' + eintraege(zustand.ausgaben.length) + ', aber noch keine Sicherung. '
         : 'Deine letzte Sicherung ist ' + tage(alter) + ' her. ') +
-        'Deine Daten liegen nur auf diesem Gerät. Hol dir eine Kopie und leg sie ' +
-        'in iCloud, Google Drive oder schick sie dir selbst per Mail.';
+        (Sync.eingerichtet()
+          ? 'Deine Daten liegen auf dem Handy und auf deinem Server. Eine Datei in '
+            + 'iCloud wäre die dritte Kopie – die einzige, die keins von beidem braucht.'
+          : 'Deine Daten liegen nur auf diesem Gerät. Hol dir eine Kopie und leg sie '
+            + 'in iCloud, Google Drive oder schick sie dir selbst per Mail.');
     }
 
     const stand = $('e-sicherung-stand');
@@ -1061,17 +1087,25 @@
     const name = 'backpack-budget-' + Store.heuteAlsText() + '.json';
     let erledigt = false;
 
-    try {
-      const datei = new File([inhalt], name, { type: 'application/json' });
-      if (navigator.canShare && navigator.canShare({ files: [datei] })) {
-        await navigator.share({ files: [datei], title: 'Backpack Budget – Sicherung' });
-        erledigt = true;
+    /* iOS laesst laengst nicht jeden Dateityp durchs Teilen-Menue.
+       "application/json" wird abgelehnt, "text/plain" akzeptiert -
+       am Inhalt aendert das nichts, die Endung bleibt .json und die
+       Datei laesst sich spaeter genauso wieder einlesen. Deshalb der
+       Reihe nach probieren, statt beim ersten Nein aufzugeben. */
+    for (const typ of ['application/json', 'text/plain']) {
+      try {
+        const datei = new File([inhalt], name, { type: typ });
+        if (navigator.canShare && navigator.canShare({ files: [datei] })) {
+          await navigator.share({ files: [datei], title: 'Backpack Budget – Sicherung' });
+          erledigt = true;
+          break;
+        }
+      } catch (e) {
+        /* Weggewischt statt gespeichert: dann gilt die Sicherung
+           bewusst NICHT als erledigt - sonst wiegt die App in
+           falscher Sicherheit. */
+        if (e && e.name === 'AbortError') return;
       }
-    } catch (e) {
-      /* Hat der Nutzer das Teilen-Menue nur weggewischt, gilt die
-         Sicherung nicht als erledigt – sonst wiegt ihn die App in
-         falscher Sicherheit. */
-      if (e && e.name === 'AbortError') return;
     }
 
     if (!erledigt) {
@@ -1080,12 +1114,22 @@
       a.href = URL.createObjectURL(blob);
       a.download = name;
       a.click();
-      URL.revokeObjectURL(a.href);
+      setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+
+      /* Am Handy oeffnet Safari die Datei bloss zur Ansicht, statt
+         sie abzulegen. Ohne Erklaerung steht man dann vor einer Wand
+         aus geschweiften Klammern und weiss nicht weiter. */
+      if (navigator.share) {
+        alert('Deine Sicherung wurde erstellt, aber dein Browser konnte das '
+            + 'Teilen-Menü nicht öffnen.\n\nDie Datei ist jetzt zu sehen. '
+            + 'Tippe auf das Teilen-Symbol und wähle „In Dateien sichern" '
+            + 'oder schick sie dir selbst zu.');
+      }
     }
 
     zustand.letzteSicherung = Date.now();
     speichern();
-    melden('Sicherung erstellt – leg sie an einen sicheren Ort');
+    melden(erledigt ? 'Sicherung gespeichert' : 'Sicherung erstellt');
   }
 
   $('e-export').onclick = sicherungHolen;
