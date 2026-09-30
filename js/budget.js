@@ -62,12 +62,24 @@ const Budget = (function () {
     return tage;
   }
 
-  /* Dein persoenlicher Anteil an einer Ausgabe.
+  /* Der Betrag einer Ausgabe in deiner Basiswaehrung.
+
+     Jede Ausgabe traegt den Kurs vom Tag ihrer Eingabe bei sich.
+     Deshalb wird hier nie neu umgerechnet - was du in Costa Rica
+     zu 516 Colón je Euro bezahlt hast, bleibt fuer immer der
+     Betrag, den es damals gekostet hat. Sonst verschoebe sich
+     deine ganze Historie mit jedem Kursstand. */
+  function basis(a) {
+    const kurs = Number(a.kurs) > 0 ? Number(a.kurs) : 1;
+    return (Number(a.betrag) || 0) / kurs;
+  }
+
+  /* Dein persoenlicher Anteil an einer Ausgabe, in Basiswaehrung.
      60 EUR durch 3 Personen geteilt = 20 EUR fuer dich.
      Bist du nicht beteiligt, ist dein Anteil 0. */
   function anteil(a, personId) {
     const teiler = a.geteiltMit.length || 1;
-    return a.geteiltMit.includes(personId) ? a.betrag / teiler : 0;
+    return a.geteiltMit.includes(personId) ? basis(a) / teiler : 0;
   }
 
   /* Dein Anteil, der auf einen einzelnen Tag entfaellt. */
@@ -207,6 +219,39 @@ const Budget = (function () {
     return zeilen;
   }
 
+  /* ---------- Auswertung nach Ort ----------
+
+     Die aussagekraeftige Zahl ist nicht die Summe, sondern der
+     Schnitt pro Tag: "Lissabon 71 EUR/Tag, Porto 43 EUR/Tag" sagt
+     etwas, "Lissabon 500 EUR" fast nichts - weil man dort
+     vielleicht dreimal so lange war. */
+
+  function proOrt(ausgaben, personId) {
+    const nachOrt = new Map();
+
+    ausgaben.forEach(a => {
+      const wert = anteil(a, personId);
+      if (wert <= 0) return;
+      const name = (a.ort || '').trim() || '— ohne Ort —';
+      if (!nachOrt.has(name)) nachOrt.set(name, { betrag: 0, tage: new Set() });
+      const eintrag = nachOrt.get(name);
+      eintrag.betrag += wert;
+      /* Eine ueber mehrere Tage verteilte Buchung zaehlt auch
+         mehrere Tage - sonst saehe ein Ort mit einer langen
+         Hostelbuchung kuenstlich teuer aus. */
+      tageEinerAusgabe(a).forEach(t => eintrag.tage.add(t));
+    });
+
+    return [...nachOrt.entries()]
+      .map(([ort, e]) => ({
+        ort,
+        betrag: e.betrag,
+        tage: e.tage.size,
+        proTag: e.tage.size ? e.betrag / e.tage.size : 0
+      }))
+      .sort((a, b) => b.proTag - a.proTag);
+  }
+
   /* ---------- Geteilte Reisekasse ----------
      Saldo = was jemand ausgelegt hat, minus sein eigener Anteil.
      Positiv = bekommt Geld zurueck. Die Summe aller Salden ist 0. */
@@ -215,7 +260,7 @@ const Budget = (function () {
     return zustand.personen.map(p => {
       const ausgelegt = zustand.ausgaben
         .filter(a => a.bezahltVon === p.id)
-        .reduce((s, a) => s + a.betrag, 0);
+        .reduce((s, a) => s + basis(a), 0);
       const eigenerAnteil = zustand.ausgaben
         .reduce((s, a) => s + anteil(a, p.id), 0);
       return { person: p, ausgelegt, eigenerAnteil, saldo: ausgelegt - eigenerAnteil };
@@ -250,8 +295,8 @@ const Budget = (function () {
 
   return {
     tagVerschieben, tageZwischen,
-    tageEinerAusgabe, anteil, anteilProTag, tagesSummen, summeAmTag,
-    plan, proKategorie, salden, ausgleich
+    tageEinerAusgabe, basis, anteil, anteilProTag, tagesSummen, summeAmTag,
+    plan, proKategorie, proOrt, salden, ausgleich
   };
 
 })();

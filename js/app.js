@@ -12,13 +12,17 @@
   /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
      sieht, welche Fassung auf dem Handy laeuft. Bei jeder
      Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
-  const APP_VERSION = 'v9';
+  const APP_VERSION = 'v10';
 
   let zustand = Store.laden();
 
   /* Merker fuer das Eingabefeld */
   let formKategorie = 'essen';
   let formGeteilt = new Set();
+  /* Beim Bearbeiten eines alten Eintrags gilt DESSEN Waehrung und
+     Kurs weiter. Sonst bekaeme eine Ausgabe aus Portugal beim
+     Nachbessern in Costa Rica ploetzlich Colón verpasst. */
+  let formBestand = null;
 
   const $ = id => document.getElementById(id);
   const el = (tag, klasse, text) => {
@@ -30,17 +34,63 @@
 
   /* ---------- Zahlen und Datum lesbar machen ---------- */
 
+  /* Betrag in deiner Basiswaehrung - damit rechnet die ganze App. */
   function geld(betrag) {
-    const zahl = new Intl.NumberFormat('de-DE', {
-      minimumFractionDigits: 2, maximumFractionDigits: 2
-    }).format(betrag || 0);
-    return zahl + ' ' + zustand.reise.waehrung;
+    return geldIn(betrag, zustand.reise.waehrung);
   }
 
-  /* Nimmt "12,50", "12.50" oder " 12,50 € " und macht 12.5 daraus. */
+  /* Betrag in einer beliebigen Waehrung.
+
+     Intl kennt die Nachkommastellen jeder Waehrung: Yen und Dong
+     haben keine, der Dinar hat drei. Von Hand gebaut waere das
+     fuer die halbe Welt falsch. */
+  function geldIn(betrag, code) {
+    try {
+      return new Intl.NumberFormat('de-DE', {
+        style: 'currency', currency: code, currencyDisplay: 'narrowSymbol'
+      }).format(betrag || 0);
+    } catch (e) {
+      const zahl = new Intl.NumberFormat('de-DE', {
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+      }).format(betrag || 0);
+      return zahl + ' ' + code;
+    }
+  }
+
+  function lokaleWaehrung() {
+    return (zustand.aktuell && zustand.aktuell.waehrung) || zustand.reise.waehrung;
+  }
+
+  /* Welche Waehrung gerade im Formular gilt. */
+  function formularWaehrung() {
+    return formBestand ? formBestand.waehrung : lokaleWaehrung();
+  }
+
+  /* Nimmt "12,50", "12.50", "30.000" oder " 12,50 € " und macht
+     eine Zahl daraus.
+
+     Der Tausenderpunkt ist der Grund fuer die Fallunterscheidung:
+     In Vietnam kostet ein Kaffee 30.000 Dong. Wuerde der Punkt
+     stumpf als Komma gelesen, waeren daraus 30 Dong - und das
+     Tagesbudget waere um den Faktor 1000 daneben.
+
+     Regel: Ein Komma ist immer das Dezimaltrennzeichen. Steht nur
+     ein Punkt da und folgen ihm genau drei Ziffern, ist es ein
+     Tausenderpunkt. Sonst ist der Punkt das Dezimaltrennzeichen. */
   function betragLesen(text) {
-    const sauber = String(text).replace(/[^0-9,.-]/g, '').replace(',', '.');
-    const zahl = parseFloat(sauber);
+    let roh = String(text).replace(/[^0-9,.-]/g, '');
+    if (!roh) return null;
+
+    if (roh.indexOf(',') !== -1) {
+      roh = roh.replace(/\./g, '').replace(',', '.');
+    } else {
+      const teile = roh.split('.');
+      const istTausender = teile.length > 1 &&
+                           teile.slice(1).every(t => t.length === 3);
+      if (istTausender) roh = teile.join('');
+    }
+
+    const zahl = parseFloat(roh);
     return isNaN(zahl) ? null : Math.round(zahl * 100) / 100;
   }
 
@@ -92,11 +142,162 @@
   }
 
   /* ==========================================================
+     Ort und Waehrung
+
+     Beides aendert sich gemeinsam: Du fliegst nach Costa Rica,
+     und ab da ist alles San José UND Colón. Deshalb ein einziger
+     Regler fuer beides, einmal bei der Ankunft gesetzt. Danach
+     bekommt jeder Eintrag den Stempel automatisch - die Eingabe
+     bleibt Betrag plus Kategorie, wie bisher.
+     ========================================================== */
+
+  function zeichneOrtsleiste() {
+    const ort = (zustand.aktuell.ort || '').trim();
+    const name = $('ort-name');
+    name.textContent = ort || 'Ort setzen';
+    name.classList.toggle('leer', !ort);
+    $('ort-waehrung').textContent = lokaleWaehrung();
+  }
+
+  /* Alle bisher benutzten Orte - fuellt die Vorschlagsliste, damit
+     man einen Ort nur einmal im Leben tippt. */
+  function bekannteOrte() {
+    const gesehen = new Set();
+    zustand.ausgaben.forEach(a => {
+      const o = (a.ort || '').trim();
+      if (o) gesehen.add(o);
+    });
+    const jetzt = (zustand.aktuell.ort || '').trim();
+    if (jetzt) gesehen.add(jetzt);
+    return [...gesehen].sort((a, b) => a.localeCompare(b, 'de'));
+  }
+
+  function zeichneOrtVorschlaege() {
+    const liste = $('ort-vorschlaege');
+    liste.textContent = '';
+    bekannteOrte().forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o;
+      liste.append(opt);
+    });
+  }
+
+  function waehrungsAuswahlFuellen(auswahl, gewaehlt) {
+    auswahl.textContent = '';
+    Waehrung.LISTE.forEach(w => {
+      const o = el('option', null, w.code + ' – ' + w.name);
+      o.value = w.code;
+      auswahl.append(o);
+    });
+    /* Eine Waehrung, die nicht in unserer Liste steht, aber in den
+       Daten vorkommt, darf nicht stillschweigend verschwinden. */
+    if (gewaehlt && !Waehrung.LISTE.some(w => w.code === gewaehlt)) {
+      const o = el('option', null, gewaehlt);
+      o.value = gewaehlt;
+      auswahl.append(o);
+    }
+    auswahl.value = gewaehlt;
+  }
+
+  /* --- Der Dialog --- */
+
+  function ortDialogOeffnen() {
+    zeichneOrtVorschlaege();
+    $('ort-eingabe').value = zustand.aktuell.ort || '';
+    waehrungsAuswahlFuellen($('ort-waehrung-wahl'), lokaleWaehrung());
+    ortKursZeigen();
+    $('ort-overlay').hidden = false;
+    setTimeout(() => $('ort-eingabe').focus(), 50);
+  }
+
+  function ortDialogSchliessen() {
+    $('ort-overlay').hidden = true;
+  }
+
+  /* Zeigt den Kurs und laesst ihn von Hand überschreiben. Beides
+     wird gebraucht: ohne Netz kennt die App keinen Kurs, und der
+     Kurs am Geldautomaten weicht ohnehin vom Marktkurs ab. */
+  function ortKursZeigen() {
+    const basis = zustand.reise.waehrung;
+    const code = $('ort-waehrung-wahl').value;
+    const kasten = $('ort-kurs-hinweis');
+    kasten.textContent = '';
+    kasten.className = 'kurs-hinweis';
+
+    if (code === basis) {
+      kasten.textContent = 'Das ist deine eigene Währung – nichts umzurechnen.';
+      return;
+    }
+
+    const bekannt = Waehrung.kurs(basis, code);
+    const zeile = el('div');
+    zeile.append(document.createTextNode('1 ' + basis + ' = '));
+
+    const feld = document.createElement('input');
+    feld.type = 'text';
+    feld.inputMode = 'decimal';
+    feld.id = 'ort-kurs-feld';
+    feld.className = 'kurs-feld';
+    feld.value = bekannt ? String(bekannt).replace('.', ',') : '';
+    feld.placeholder = 'Kurs eintragen';
+    zeile.append(feld, document.createTextNode(' ' + code));
+    kasten.append(zeile);
+
+    const alter = Waehrung.alterTage();
+    const sub = el('div', 'kachel-sub');
+    if (bekannt && alter === 0) sub.textContent = 'Heute vom Kursdienst geholt. Du kannst ihn überschreiben.';
+    else if (bekannt) sub.textContent = 'Kurs ist ' + tage(alter) + ' alt. Du kannst ihn überschreiben.';
+    else {
+      kasten.classList.add('warn');
+      sub.textContent = 'Kein Kurs bekannt – ohne Netz bitte von Hand eintragen.';
+    }
+    kasten.append(sub);
+  }
+
+  async function ortUebernehmen() {
+    const ort = $('ort-eingabe').value.trim();
+    const code = $('ort-waehrung-wahl').value;
+    const basis = zustand.reise.waehrung;
+
+    if (code !== basis) {
+      const feld = $('ort-kurs-feld');
+      const kurs = feld ? betragLesenGenau(feld.value) : null;
+      if (!kurs || kurs <= 0) {
+        melden('Bitte einen Kurs eintragen');
+        if (feld) feld.focus();
+        return;
+      }
+      /* Von Hand gesetzte Kurse gehoeren in den Vorrat, sonst waeren
+         sie beim naechsten Eintrag wieder weg. */
+      const v = Waehrung.vorrat() || { basis: basis, kurse: {}, geholt: 0 };
+      if (v.basis !== basis) { v.basis = basis; v.kurse = {}; }
+      v.kurse[code] = kurs;
+      try { localStorage.setItem('backpack-budget-kurse', JSON.stringify(v)); } catch (e) {}
+    }
+
+    zustand.aktuell = { ort: ort, waehrung: code };
+    ortDialogSchliessen();
+    speichern();
+    melden(ort ? ort + ' · ' + code : code + ' übernommen');
+  }
+
+  /* Wie betragLesen, aber ohne Rundung auf zwei Stellen - ein Kurs
+     wie 29431,412651 darf nicht auf 29431,41 gekuerzt werden. */
+  function betragLesenGenau(text) {
+    let roh = String(text).replace(/[^0-9,.-]/g, '');
+    if (!roh) return null;
+    if (roh.indexOf(',') !== -1) roh = roh.replace(/\./g, '').replace(',', '.');
+    const zahl = parseFloat(roh);
+    return isNaN(zahl) ? null : zahl;
+  }
+
+  /* ==========================================================
      Zeichnen
      ========================================================== */
 
   function zeichnen() {
     const p = Budget.plan(zustand);
+    zeichneOrtsleiste();
     zeichneKopf(p);
     zeichneHeute(p);
     zeichneFormular();
@@ -299,9 +500,11 @@
 
       const text = el('div');
       text.append(el('div', 'posten-titel', a.notiz || k.name));
-      text.append(el('div', 'posten-sub', anzahlTage > 1
-        ? 'Anteil von ' + geld(a.betrag) + ' über ' + tage(anzahlTage)
-        : k.name));
+      const untertitel = [];
+      if (anzahlTage > 1) untertitel.push('Anteil von ' + geld(Budget.basis(a)) + ' über ' + tage(anzahlTage));
+      else untertitel.push(k.name);
+      if (a.waehrung !== zustand.reise.waehrung) untertitel.push(geldIn(a.betrag, a.waehrung));
+      text.append(el('div', 'posten-sub', untertitel.join(' · ')));
 
       posten.append(el('div', 'posten-icon', k.icon), text,
                     el('div', 'posten-betrag', geld(Budget.anteilProTag(a, zustand.ichBinId))));
@@ -358,9 +561,32 @@
       geteilt.append(c);
     });
 
-    $('f-waehrung').textContent = zustand.reise.waehrung;
+    $('f-waehrung').textContent = Waehrung.zeichen(formularWaehrung());
     if (!$('f-datum').value) $('f-datum').value = Store.heuteAlsText();
+    umrechnungZeigen();
     $('f-mehr-schalter').hidden = !$('f-mehr').hidden;
+  }
+
+  /* Zeigt live, was der eingetippte Betrag in deiner eigenen
+     Waehrung bedeutet. Ohne das tippt man 30.000 Dong und hat
+     keine Vorstellung, ob das viel war. */
+  function umrechnungZeigen() {
+    const kasten = $('f-umrechnung');
+    const code = formularWaehrung();
+    const basis = zustand.reise.waehrung;
+    const betrag = betragLesen($('f-betrag').value);
+
+    if (code === basis || !betrag) { kasten.hidden = true; return; }
+
+    const kurs = formBestand ? formBestand.kurs : Waehrung.kurs(basis, code);
+    kasten.hidden = false;
+    kasten.className = 'umrechnung';
+    if (!kurs) {
+      kasten.classList.add('unbekannt');
+      kasten.textContent = 'Kein Kurs für ' + code + ' – oben auf den Ort tippen und eintragen';
+      return;
+    }
+    kasten.textContent = '≈ ' + geld(betrag / kurs);
   }
 
   /* Zeigt live, wie sich eine Buchung auf die Tage verteilt. */
@@ -371,12 +597,14 @@
 
     if (!betrag || !von || !bis || bis <= von) { hinweis.hidden = true; return; }
     const anzahl = Budget.tageZwischen(von, bis);
+    const code = formularWaehrung();
     hinweis.hidden = false;
-    hinweis.textContent = geld(betrag) + ' verteilt auf ' + tage(anzahl) + ' = ' +
-                          geld(betrag / anzahl) + ' pro Tag';
+    hinweis.textContent = geldIn(betrag, code) + ' verteilt auf ' + tage(anzahl) + ' = ' +
+                          geldIn(betrag / anzahl, code) + ' pro Tag';
   }
 
   function formularLeeren() {
+    formBestand = null;
     $('f-id').value = '';
     $('f-betrag').value = '';
     $('f-notiz').value = '';
@@ -393,6 +621,7 @@
   }
 
   function formularFuellen(a) {
+    formBestand = { waehrung: a.waehrung, kurs: a.kurs, ort: a.ort || '' };
     $('f-id').value = a.id;
     $('f-betrag').value = String(a.betrag).replace('.', ',');
     $('f-notiz').value = a.notiz || '';
@@ -407,6 +636,7 @@
     $('f-abbrechen').hidden = false;
     $('f-loeschen').hidden = false;
     verteilHinweis();
+    umrechnungZeigen();
     ansichtWechseln('heute');
     $('formular').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -434,7 +664,7 @@
         aktuellerTag = a.datum;
         const tagSumme = zustand.ausgaben
           .filter(x => x.datum === a.datum)
-          .reduce((s, x) => s + x.betrag, 0);
+          .reduce((s, x) => s + Budget.basis(x), 0);
         const kopf = el('div', 'tag-kopf');
         kopf.append(el('span', null, datumLesbar(a.datum)), el('span', null, geld(tagSumme)));
         liste.append(kopf);
@@ -450,6 +680,8 @@
 
       const teile = [];
       if (a.notiz) teile.push(k.name);
+      if (a.waehrung !== zustand.reise.waehrung) teile.push(geldIn(a.betrag, a.waehrung));
+      if (a.ort) teile.push(a.ort);
       if (anzahlTage > 1) teile.push('über ' + tage(anzahlTage) + ' verteilt');
       if (zustand.personen.length > 1) {
         teile.push(a.geteiltMit.length > 1
@@ -459,7 +691,7 @@
       text.append(el('div', 'posten-sub', teile.join(' · ')));
 
       posten.append(el('div', 'posten-icon', k.icon), text,
-                    el('div', 'posten-betrag', geld(a.betrag)));
+                    el('div', 'posten-betrag', geld(Budget.basis(a))));
       posten.onclick = () => formularFuellen(a);
       liste.append(posten);
     });
@@ -470,8 +702,39 @@
   function zeichneAuswertung(p) {
     zeichnePrognose(p);
     zeichneRuecklagenUebersicht();
+    zeichneOrte();
     zeichneKategorien();
     zeichneReisekasse();
+  }
+
+  /* Was dich wo am Tag gekostet hat. Die Summe allein sagt wenig -
+     ein Ort, an dem man dreimal so lange war, ist nicht dreimal so
+     teuer. Deshalb steht der Tagesschnitt vorn und sortiert. */
+  function zeichneOrte() {
+    const zeilen = Budget.proOrt(zustand.ausgaben, zustand.ichBinId);
+    const karte = $('karte-orte');
+    /* Bei nur einem Ort ohne Namen gibt es nichts zu vergleichen. */
+    const zeigen = zeilen.length > 1 || (zeilen.length === 1 && zeilen[0].ort !== '— ohne Ort —');
+    karte.hidden = !zeigen;
+    if (!zeigen) return;
+
+    const liste = $('orte-liste');
+    liste.textContent = '';
+    const teuerster = zeilen[0].proTag || 1;
+
+    zeilen.forEach(z => {
+      const zeile = el('div', 'ort-zeile');
+      zeile.append(el('span', 'ort-titel', z.ort),
+                   el('span', 'ort-pro-tag', geld(z.proTag) + ' / Tag'));
+      zeile.append(el('span', 'ort-sub',
+        tage(z.tage) + ' · insgesamt ' + geld(z.betrag)));
+      const schiene = el('div', 'ort-schiene');
+      const fuell = el('i');
+      fuell.style.width = (z.proTag / teuerster * 100) + '%';
+      schiene.append(fuell);
+      zeile.append(schiene);
+      liste.append(zeile);
+    });
   }
 
   /* Nur-Lese-Liste der Rücklagen. Geändert wird in den Einstellungen. */
@@ -607,7 +870,9 @@
     $('e-ende').value     = zustand.reise.ende || '';
     $('e-gesamt').value   = zustand.reise.gesamtbudget
       ? String(zustand.reise.gesamtbudget).replace('.', ',') : '';
-    $('e-waehrung').value = zustand.reise.waehrung;
+    waehrungsAuswahlFuellen($('e-waehrung'), zustand.reise.waehrung);
+    zeichneKursStand();
+    zeichneOrtVorschlaege();
 
     const dauer = Budget.tageZwischen(zustand.reise.start, zustand.reise.ende);
     $('e-dauer').value = dauer > 0 ? dauer : '';
@@ -712,6 +977,26 @@
         auswahl.append(o);
       });
       auswahl.value = 'fortbewegung';
+    }
+  }
+
+  function zeichneKursStand() {
+    const kasten = $('e-kurs-stand');
+    const v = Waehrung.vorrat();
+    const alter = Waehrung.alterTage();
+    kasten.className = 'sicherung-stand';
+
+    if (!v || v.basis !== zustand.reise.waehrung) {
+      kasten.textContent = 'Noch keine Kurse geholt.';
+      return;
+    }
+    const anzahl = Object.keys(v.kurse || {}).length;
+    if (alter === 0) {
+      kasten.classList.add('ok');
+      kasten.textContent = anzahl + ' Kurse, heute geholt.';
+    } else {
+      if (alter > 7) kasten.classList.add('fehler');
+      kasten.textContent = anzahl + ' Kurse, ' + tage(alter) + ' alt.';
     }
   }
 
@@ -913,8 +1198,8 @@
   };
 
   ['f-betrag', 'f-datum', 'f-bis'].forEach(id => {
-    $(id).addEventListener('input', verteilHinweis);
-    $(id).addEventListener('change', verteilHinweis);
+    $(id).addEventListener('input', () => { verteilHinweis(); umrechnungZeigen(); });
+    $(id).addEventListener('change', () => { verteilHinweis(); umrechnungZeigen(); });
   });
 
   /* Ausgabe speichern (neu oder geaendert) */
@@ -932,8 +1217,24 @@
     if (bis && bis <= von) bis = '';
 
     const id = $('f-id').value;
+    const basis = zustand.reise.waehrung;
+    const code = formularWaehrung();
+    const kurs = formBestand ? formBestand.kurs
+               : (code === basis ? 1 : Waehrung.kurs(basis, code));
+
+    if (!kurs) {
+      melden('Kein Kurs für ' + code + ' – oben auf den Ort tippen');
+      return;
+    }
+
     const daten = {
       betrag,
+      waehrung: code,
+      /* Der Kurs wird MITGESCHRIEBEN, nicht spaeter nachgeschlagen:
+         was diese Ausgabe heute gekostet hat, soll sie in einem
+         halben Jahr immer noch gekostet haben. */
+      kurs: kurs,
+      ort: formBestand ? formBestand.ort : (zustand.aktuell.ort || '').trim(),
       kategorie: formKategorie,
       datum: von,
       bisDatum: bis,
@@ -948,8 +1249,8 @@
     } else {
       zustand.ausgaben.push(Object.assign({ id: Store.neueId(), angelegt: Date.now() }, daten));
       melden(bis
-        ? geld(betrag) + ' auf ' + tage(Budget.tageZwischen(von, bis)) + ' verteilt'
-        : geld(betrag) + ' eingetragen');
+        ? geldIn(betrag, code) + ' auf ' + tage(Budget.tageZwischen(von, bis)) + ' verteilt'
+        : geldIn(betrag, code) + ' eingetragen');
     }
     formularLeeren();
     speichern();
@@ -1002,9 +1303,21 @@
     speichern();
   };
 
-  $('e-waehrung').onchange = () => {
-    zustand.reise.waehrung = $('e-waehrung').value.trim() || '€';
+  $('e-waehrung').onchange = async () => {
+    const neu = $('e-waehrung').value;
+    const alt = zustand.reise.waehrung;
+    if (neu === alt) return;
+    if (zustand.ausgaben.length && !confirm(
+        'Basiswährung von ' + alt + ' auf ' + neu + ' umstellen?\n\n' +
+        'Bereits eingetragene Ausgaben behalten ihre gespeicherten Kurse und werden ' +
+        'dadurch falsch umgerechnet. Sinnvoll nur, solange die Reise noch nicht läuft.')) {
+      $('e-waehrung').value = alt;
+      return;
+    }
+    zustand.reise.waehrung = neu;
+    if (zustand.aktuell.waehrung === alt) zustand.aktuell.waehrung = neu;
     speichern();
+    try { await Waehrung.holen(neu); zeichneKursStand(); zeichnen(); } catch (e) {}
   };
 
   $('e-ich').onchange = () => { zustand.ichBinId = $('e-ich').value; speichern(); };
@@ -1042,6 +1355,82 @@
     zeichneEinstellungenSync();
     zeichneSyncLeiste();
     melden('Verbindung getrennt');
+  };
+
+  $('ortsleiste').onclick = ortDialogOeffnen;
+  $('ort-abbrechen').onclick = ortDialogSchliessen;
+  $('ort-uebernehmen').onclick = ortUebernehmen;
+  $('ort-waehrung-wahl').onchange = ortKursZeigen;
+  $('ort-overlay').addEventListener('click', e => {
+    if (e.target === $('ort-overlay')) ortDialogSchliessen();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('ort-overlay').hidden) ortDialogSchliessen();
+  });
+
+  $('e-kurse-holen').onclick = async () => {
+    melden('Kurse werden geholt …');
+    try {
+      await Waehrung.holen(zustand.reise.waehrung);
+      zeichneKursStand();
+      umrechnungZeigen();
+      melden('Kurse aktualisiert');
+    } catch (e) {
+      melden(e.message);
+    }
+  };
+
+  /* Ort für einen Zeitraum nachtragen - damit bekommen auch die
+     Eintraege ihre Stadt, die vor dieser Funktion entstanden sind. */
+  $('e-nach-uebernehmen').onclick = () => {
+    const von = $('e-nach-von').value;
+    const bis = $('e-nach-bis').value;
+    const ort = $('e-nach-ort').value.trim();
+    const stand = $('e-nach-stand');
+
+    if (!von || !bis || bis < von) { melden('Bitte einen gültigen Zeitraum wählen'); return; }
+    if (!ort) { melden('Bitte einen Ort eintragen'); $('e-nach-ort').focus(); return; }
+
+    const betroffen = zustand.ausgaben.filter(a => a.datum >= von && a.datum <= bis);
+    stand.hidden = false;
+    stand.className = 'sicherung-stand';
+
+    if (!betroffen.length) {
+      stand.textContent = 'In diesem Zeitraum liegt kein Eintrag.';
+      return;
+    }
+
+    /* Nachtragen fuellt Luecken - es ueberschreibt nicht.
+
+       Wer einen alten Zeitraum nachtraegt, trifft sonst leicht
+       einen neueren Eintrag mit richtigem Ort und macht ihn
+       kaputt. Bereits gesetzte Orte bleiben deshalb stehen, und
+       nur wenn ueberhaupt keine Luecke da ist, wird gefragt. */
+    const offen = betroffen.filter(a => !a.ort);
+    const gesetzt = betroffen.length - offen.length;
+
+    if (!offen.length) {
+      const andere = betroffen.filter(a => a.ort !== ort).length;
+      if (!andere) {
+        stand.textContent = 'Alle ' + eintraege(betroffen.length) + ' stehen schon auf „' + ort + '".';
+        return;
+      }
+      if (!confirm('Alle ' + eintraege(betroffen.length) + ' in diesem Zeitraum haben schon einen Ort.\n\n'
+                 + 'Sollen sie auf „' + ort + '" geändert werden?')) return;
+      betroffen.forEach(a => { a.ort = ort; });
+      speichern();
+      stand.className = 'sicherung-stand ok';
+      stand.textContent = eintraege(betroffen.length) + ' auf „' + ort + '" geändert.';
+      melden(eintraege(betroffen.length) + ' geändert');
+      return;
+    }
+
+    offen.forEach(a => { a.ort = ort; });
+    speichern();
+    stand.className = 'sicherung-stand ok';
+    stand.textContent = eintraege(offen.length) + ' auf „' + ort + '" gesetzt.' +
+      (gesetzt ? ' ' + gesetzt + ' hatten schon einen Ort und blieben unverändert.' : '');
+    melden(eintraege(offen.length) + ' nachgetragen');
   };
 
   $('e-r-hinzu').onclick = () => {
@@ -1191,6 +1580,12 @@
   zeichneEinstellungenSync();
 
   if (Sync.eingerichtet()) abgleichen(false);
+
+  /* Einmal taeglich genug - der Dienst aktualisiert selbst nur so
+     oft. Scheitert still, dann gelten die zuletzt bekannten Kurse. */
+  Waehrung.beiGelegenheitHolen(zustand.reise.waehrung).then(geholt => {
+    if (geholt) { zeichneKursStand(); umrechnungZeigen(); }
+  });
 
   /* Kommt das Netz zurueck, das Liegengebliebene nachreichen. */
   window.addEventListener('online', () => {

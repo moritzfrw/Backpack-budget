@@ -13,7 +13,7 @@
 const Store = (function () {
 
   const SCHLUESSEL = 'backpack-budget-v1';
-  const VERSION = 2;
+  const VERSION = 3;
 
   /* Die Kategorien. Reihenfolge = Reihenfolge in der App.
      Willst du eine weitere, haeng hier einfach eine Zeile an. */
@@ -42,8 +42,14 @@ const Store = (function () {
         start: heuteAlsText(),
         ende: '',
         gesamtbudget: 0,
-        waehrung: '€'
+        /* Ab Version 3 ein Waehrungs-CODE statt eines Zeichens.
+           Der Kursdienst spricht Codes, und '€' gibt es dort nicht. */
+        waehrung: 'EUR'
       },
+      /* Wo du gerade bist. Wird einmal bei der Ankunft gesetzt und
+         stempelt danach jeden neuen Eintrag - Ort UND Waehrung
+         zusammen, weil sich beides gemeinsam aendert. */
+      aktuell: { ort: '', waehrung: 'EUR' },
       personen: [{ id: ich, name: 'Ich' }],
       ichBinId: ich,
       ausgaben: [],
@@ -95,7 +101,19 @@ const Store = (function () {
     d.ausgaben = Array.isArray(d.ausgaben) ? d.ausgaben : [];
     d.ruecklagen = Array.isArray(d.ruecklagen) ? d.ruecklagen : [];
     d.letzteSicherung = Number(d.letzteSicherung) || 0;
+    d.aktuell = (d.aktuell && typeof d.aktuell === 'object') ? d.aktuell : { ort: '', waehrung: '' };
     d.stand = Number(d.stand) || 0;
+
+    /* Bis Version 2 stand in `waehrung` ein Zeichen wie '€'. Der
+       Kursdienst kennt nur Codes, also uebersetzen wir einmalig. */
+    const ZEICHEN_ZU_CODE = {
+      '€': 'EUR', '$': 'USD', '£': 'GBP', '¥': 'JPY',
+      '₡': 'CRC', '฿': 'THB', '₫': 'VND', '₹': 'INR', '₱': 'PHP'
+    };
+    if (ZEICHEN_ZU_CODE[d.reise.waehrung]) {
+      d.reise.waehrung = ZEICHEN_ZU_CODE[d.reise.waehrung];
+    }
+    if (!/^[A-Z]{3}$/.test(d.reise.waehrung || '')) d.reise.waehrung = 'EUR';
 
     /* Version 1 kannte nur ein von Hand gesetztes Tagesbudget.
        Daraus machen wir ein Gesamtbudget. */
@@ -111,8 +129,14 @@ const Store = (function () {
     const gueltigePersonen = new Set(d.personen.map(p => p.id));
     const gueltigeKategorien = new Set(KATEGORIEN.map(k => k.id));
 
+    /* Alles, was vor Version 3 eingetragen wurde, war in der
+       Basiswaehrung erfasst - damals gab es ja keine andere.
+       Kurs 1 ist deshalb nicht geraten, sondern richtig. */
     d.ausgaben.forEach(a => {
       a.betrag = Number(a.betrag) || 0;
+      if (!/^[A-Z]{3}$/.test(a.waehrung || '')) a.waehrung = d.reise.waehrung;
+      a.kurs = Number(a.kurs) > 0 ? Number(a.kurs) : 1;
+      a.ort = typeof a.ort === 'string' ? a.ort.trim() : '';
       if (ALTE_KATEGORIEN[a.kategorie]) a.kategorie = ALTE_KATEGORIEN[a.kategorie];
       if (!gueltigeKategorien.has(a.kategorie)) a.kategorie = KATEGORIEN[0].id;
       if (a.bisDatum && a.bisDatum <= a.datum) a.bisDatum = '';
@@ -127,6 +151,9 @@ const Store = (function () {
       if (ALTE_KATEGORIEN[r.kategorie]) r.kategorie = ALTE_KATEGORIEN[r.kategorie];
       if (!gueltigeKategorien.has(r.kategorie)) r.kategorie = 'sonstiges';
     });
+
+    if (!/^[A-Z]{3}$/.test(d.aktuell.waehrung || '')) d.aktuell.waehrung = d.reise.waehrung;
+    if (typeof d.aktuell.ort !== 'string') d.aktuell.ort = '';
 
     d.version = VERSION;
     return d;

@@ -108,6 +108,81 @@ main { max-width: 620px; margin: 0 auto; padding: 8px 18px 24px; }
 .sync-stand.ok     { color: var(--akzent); }
 .sync-stand.fehler { color: var(--gefahr); }
 
+/* ---------- Ortsleiste ---------- */
+
+.ortsleiste {
+  display: flex; align-items: center; gap: 9px;
+  max-width: 620px; margin: 0 auto; width: 100%;
+  padding: 9px 18px 11px;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 14px; color: var(--text);
+  text-align: left;
+}
+.ort-pin { color: var(--akzent); font-size: 13px; }
+.ort-name { font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ort-name.leer { font-weight: 400; color: var(--text-leise); }
+.ort-waehrung {
+  font-size: 11.5px; font-weight: 600; letter-spacing: .05em;
+  background: var(--akzent-weich); color: var(--akzent);
+  padding: 3px 8px; border-radius: 999px;
+}
+.ort-pfeil { color: var(--text-leise); font-size: 16px; line-height: 1; }
+
+/* ---------- Umrechnung unter dem Betrag ---------- */
+
+.umrechnung {
+  font-size: 13.5px; font-weight: 550; color: var(--akzent);
+  margin-top: 2px;
+}
+.umrechnung.unbekannt { color: var(--warn); }
+
+/* ---------- Dialog ---------- */
+
+.overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(8, 12, 18, .55);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 16px;
+}
+@media (min-width: 34rem) { .overlay { align-items: center; } }
+
+.dialog {
+  background: var(--karte); border: 1px solid var(--rand);
+  border-radius: 16px; padding: 22px;
+  width: 100%; max-width: 30rem;
+  max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0,0,0,.3);
+}
+.dialog h2 {
+  margin: 0 0 6px; font-size: 19px; font-weight: 650; letter-spacing: -.01em;
+}
+
+.kurs-hinweis {
+  margin-top: 14px; padding: 11px 14px; border-radius: 10px;
+  background: var(--grund); font-size: 13.5px; color: var(--text-leise);
+}
+.kurs-feld {
+  width: 9.5rem !important; display: inline-block !important;
+  padding: 6px 9px !important; font-size: 14px !important;
+  font-variant-numeric: tabular-nums; margin: 0 4px;
+  background: var(--karte) !important;
+}
+.kurs-hinweis.ok { background: var(--akzent-weich); color: var(--akzent); font-weight: 550; }
+.kurs-hinweis.warn { background: var(--gefahr-weich); color: var(--gefahr); font-weight: 550; }
+
+/* ---------- Orte-Auswertung ---------- */
+
+.orte { display: flex; flex-direction: column; gap: 13px; }
+.ort-zeile { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline; }
+.ort-titel { font-size: 14.5px; font-weight: 550; }
+.ort-pro-tag { font-size: 15px; font-weight: 620; font-variant-numeric: tabular-nums; }
+.ort-sub { font-size: 12.5px; color: var(--text-leise); grid-column: 1 / 3; margin-top: -2px; }
+.ort-schiene {
+  grid-column: 1 / 3; height: 5px; border-radius: 999px; margin-top: 3px;
+  background: color-mix(in srgb, var(--text-leise) 15%, transparent);
+}
+.ort-schiene i { display: block; height: 100%; border-radius: 999px; background: var(--akzent); }
+
 /* ---------- Sicherungs-Erinnerung ---------- */
 
 .sicherung { border-color: var(--warn); }
