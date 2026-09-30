@@ -314,6 +314,20 @@
 
 <datalist id="ort-vorschlaege"></datalist>
 
+<div class="overlay" id="ort-detail-overlay" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="od-titel">
+    <h2 id="od-titel">Stadt</h2>
+    <div class="od-kopf">
+      <div class="od-gross" id="od-pro-tag">–</div>
+      <div class="od-sub" id="od-sub"></div>
+    </div>
+    <div class="od-liste" id="od-liste"></div>
+    <div class="formular-knoepfe">
+      <button type="button" class="knopf still" id="od-schliessen">Schließen</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="ort-overlay" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ort-dialog-titel">
     <h2 id="ort-dialog-titel">Womit zahlst du hier?</h2>

@@ -12,7 +12,7 @@
   /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
      sieht, welche Fassung auf dem Handy laeuft. Bei jeder
      Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
-  const APP_VERSION = 'v12';
+  const APP_VERSION = 'v13';
 
   let zustand = Store.laden();
 
@@ -740,16 +740,14 @@
       liste.append(hinweis);
     }
 
+    /* Die Zeile bleibt eine Zeile. Alles Weitere gehoert in ein
+       eigenes Feld - aufgeklappte Abschnitte mitten in einer Liste
+       machen sie unlesbar, und genau darum ging es hier. */
     zeilen.forEach(z => {
       const zeile = el('div', 'ort-zeile');
       zeile.tabIndex = 0;
       zeile.setAttribute('role', 'button');
-      zeile.setAttribute('aria-expanded', 'false');
 
-      /* Der Vergleichsbalken liegt als Fuellung IM Hintergrund der
-         Zeile statt darunter. Das halbiert die Hoehe, und bei zwoelf
-         Staedten ist das der Unterschied zwischen Ueberblick und
-         Bleiwueste. */
       const fuellung = el('div', 'ort-fuellung');
       fuellung.style.width = (z.proTag / teuerster * 100) + '%';
 
@@ -758,33 +756,43 @@
                    el('span', 'ort-tage', z.tage + (z.tage === 1 ? ' Tag' : ' Tage')),
                    el('span', 'ort-pro-tag', geld(z.proTag)));
 
-      /* Die Aufschluesselung beantwortet die eigentliche Frage:
-         nicht OB eine Stadt teuer war, sondern WORAN es lag. Sie
-         klappt erst auf Tippen auf. */
-      const auf = el('div', 'ort-aufschluesselung');
-      auf.hidden = true;
-      z.kategorien.forEach(k => {
-        const kz = el('div', 'ort-kat');
-        kz.append(el('span', null, k.kategorie.icon),
-                  el('span', null, k.kategorie.name),
-                  el('span', 'betrag', geld(k.betrag)),
-                  el('span', 'prozent', Math.round(k.anteil) + '%'));
-        auf.append(kz);
-      });
-      zeile.append(auf);
-
-      const umschalten = () => {
-        auf.hidden = !auf.hidden;
-        zeile.setAttribute('aria-expanded', auf.hidden ? 'false' : 'true');
-      };
-      zeile.onclick = umschalten;
+      zeile.onclick = () => ortDetailOeffnen(z);
       zeile.onkeydown = e => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); umschalten(); }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ortDetailOeffnen(z); }
       };
-
       liste.append(zeile);
     });
   }
+
+  /* Eine Stadt im Detail: was pro Tag, woraus es sich zusammensetzt. */
+  function ortDetailOeffnen(z) {
+    $('od-titel').textContent = z.ort;
+    $('od-pro-tag').textContent = geld(z.proTag) + ' pro Tag';
+    $('od-sub').textContent = tage(z.tage) + ' · insgesamt ' + geld(z.betrag);
+
+    const liste = $('od-liste');
+    liste.textContent = '';
+    const groesste = z.kategorien.length ? z.kategorien[0].betrag : 1;
+
+    z.kategorien.forEach(k => {
+      const zeile = el('div', 'od-kat');
+      zeile.append(el('span', null, k.kategorie.icon),
+                   el('span', 'name', k.kategorie.name),
+                   el('span', 'betrag', geld(k.betrag)));
+      const schiene = el('div', 'schiene');
+      const fuell = el('i');
+      fuell.style.width = (k.betrag / groesste * 100) + '%';
+      schiene.append(fuell);
+      zeile.append(schiene);
+      zeile.append(el('div', 'anteil',
+        Math.round(k.anteil) + '% · ' + geld(k.proTag) + ' pro Tag'));
+      liste.append(zeile);
+    });
+
+    $('ort-detail-overlay').hidden = false;
+  }
+
+
 
   /* Nur-Lese-Liste der Rücklagen. Geändert wird in den Einstellungen. */
   function zeichneRuecklagenUebersicht() {
@@ -1470,6 +1478,11 @@
     melden('Verbindung getrennt');
   };
 
+  $('od-schliessen').onclick = () => { $('ort-detail-overlay').hidden = true; };
+  $('ort-detail-overlay').addEventListener('click', e => {
+    if (e.target === $('ort-detail-overlay')) $('ort-detail-overlay').hidden = true;
+  });
+
   $('ortsleiste').onclick = ortDialogOeffnen;
   $('ort-abbrechen').onclick = ortDialogSchliessen;
   $('ort-uebernehmen').onclick = ortUebernehmen;
@@ -1478,7 +1491,9 @@
     if (e.target === $('ort-overlay')) ortDialogSchliessen();
   });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !$('ort-overlay').hidden) ortDialogSchliessen();
+    if (e.key !== 'Escape') return;
+    if (!$('ort-detail-overlay').hidden) $('ort-detail-overlay').hidden = true;
+    else if (!$('ort-overlay').hidden) ortDialogSchliessen();
   });
 
   $('e-notizen-uebernehmen').onclick = () => {
