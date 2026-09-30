@@ -12,7 +12,7 @@
   /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
      sieht, welche Fassung auf dem Handy laeuft. Bei jeder
      Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
-  const APP_VERSION = 'v11';
+  const APP_VERSION = 'v12';
 
   let zustand = Store.laden();
 
@@ -724,34 +724,64 @@
   function zeichneOrte() {
     const zeilen = Budget.proOrt(zustand.ausgaben, zustand.ichBinId);
     const karte = $('karte-orte');
-    /* Bei nur einem Ort ohne Namen gibt es nichts zu vergleichen. */
-    const zeigen = zeilen.length > 1 || (zeilen.length === 1 && zeilen[0].ort !== '— ohne Ort —');
+    const zeigen = zeilen.length > 1 || (zeilen.length === 1 && zeilen[0].ort !== 'Ort noch unbekannt');
     karte.hidden = !zeigen;
     if (!zeigen) return;
 
     const liste = $('orte-liste');
     liste.textContent = '';
     const teuerster = zeilen[0].proTag || 1;
+
     const ohne = zeilen.find(z => z.ort === 'Ort noch unbekannt');
     if (ohne) {
       const hinweis = el('p', 'hinweis mini',
-        'Für ' + tage(ohne.tage) + ' fehlt noch eine Unterkunft mit Stadt. '
-        + 'Trag sie nach, dann ordnen sich diese Ausgaben von selbst zu.');
-      hinweis.style.margin = '0 0 4px';
+        'Für ' + tage(ohne.tage) + ' fehlt noch eine Unterkunft mit Stadt.');
+      hinweis.style.margin = '0 0 6px';
       liste.append(hinweis);
     }
 
     zeilen.forEach(z => {
       const zeile = el('div', 'ort-zeile');
-      zeile.append(el('span', 'ort-titel', z.ort),
-                   el('span', 'ort-pro-tag', geld(z.proTag) + ' / Tag'));
-      zeile.append(el('span', 'ort-sub',
-        tage(z.tage) + ' · insgesamt ' + geld(z.betrag)));
-      const schiene = el('div', 'ort-schiene');
-      const fuell = el('i');
-      fuell.style.width = (z.proTag / teuerster * 100) + '%';
-      schiene.append(fuell);
-      zeile.append(schiene);
+      zeile.tabIndex = 0;
+      zeile.setAttribute('role', 'button');
+      zeile.setAttribute('aria-expanded', 'false');
+
+      /* Der Vergleichsbalken liegt als Fuellung IM Hintergrund der
+         Zeile statt darunter. Das halbiert die Hoehe, und bei zwoelf
+         Staedten ist das der Unterschied zwischen Ueberblick und
+         Bleiwueste. */
+      const fuellung = el('div', 'ort-fuellung');
+      fuellung.style.width = (z.proTag / teuerster * 100) + '%';
+
+      zeile.append(fuellung,
+                   el('span', 'ort-titel', z.ort),
+                   el('span', 'ort-tage', z.tage + (z.tage === 1 ? ' Tag' : ' Tage')),
+                   el('span', 'ort-pro-tag', geld(z.proTag)));
+
+      /* Die Aufschluesselung beantwortet die eigentliche Frage:
+         nicht OB eine Stadt teuer war, sondern WORAN es lag. Sie
+         klappt erst auf Tippen auf. */
+      const auf = el('div', 'ort-aufschluesselung');
+      auf.hidden = true;
+      z.kategorien.forEach(k => {
+        const kz = el('div', 'ort-kat');
+        kz.append(el('span', null, k.kategorie.icon),
+                  el('span', null, k.kategorie.name),
+                  el('span', 'betrag', geld(k.betrag)),
+                  el('span', 'prozent', Math.round(k.anteil) + '%'));
+        auf.append(kz);
+      });
+      zeile.append(auf);
+
+      const umschalten = () => {
+        auf.hidden = !auf.hidden;
+        zeile.setAttribute('aria-expanded', auf.hidden ? 'false' : 'true');
+      };
+      zeile.onclick = umschalten;
+      zeile.onkeydown = e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); umschalten(); }
+      };
+
       liste.append(zeile);
     });
   }

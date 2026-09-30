@@ -288,10 +288,16 @@ const Budget = (function () {
 
       tage.forEach(t => {
         const name = ortAmTag(zeitstrahl, t) || 'Ort noch unbekannt';
-        if (!nachOrt.has(name)) nachOrt.set(name, { betrag: 0, tage: new Set() });
+        if (!nachOrt.has(name)) {
+          nachOrt.set(name, { betrag: 0, tage: new Set(), kategorien: new Map() });
+        }
         const eintrag = nachOrt.get(name);
         eintrag.betrag += proTag;
         eintrag.tage.add(t);
+        /* Aufschluesselung mitfuehren: erst sie beantwortet, WARUM
+           ein Ort teuer war - Unterkunft oder der Rest. */
+        eintrag.kategorien.set(a.kategorie,
+          (eintrag.kategorien.get(a.kategorie) || 0) + proTag);
       });
     });
 
@@ -300,7 +306,15 @@ const Budget = (function () {
         ort,
         betrag: e.betrag,
         tage: e.tage.size,
-        proTag: e.tage.size ? e.betrag / e.tage.size : 0
+        proTag: e.tage.size ? e.betrag / e.tage.size : 0,
+        kategorien: [...e.kategorien.entries()]
+          .map(([id, betrag]) => ({
+            kategorie: Store.kategorie(id),
+            betrag,
+            proTag: e.tage.size ? betrag / e.tage.size : 0,
+            anteil: e.betrag > 0 ? betrag / e.betrag * 100 : 0
+          }))
+          .sort((a, b) => b.betrag - a.betrag)
       }))
       .sort((a, b) => b.proTag - a.proTag);
   }
