@@ -72,6 +72,14 @@
 
       <div class="kat-kacheln" id="f-kategorien"></div>
 
+      <div class="unterkunft-block" id="f-unterkunft" hidden>
+        <label class="feld-label" for="f-ort">Stadt <span class="pflicht">Pflicht</span></label>
+        <input id="f-ort" type="text" placeholder="z.B. San José" autocomplete="off"
+               list="ort-vorschlaege">
+        <p class="hinweis mini">Daraus weiß die App, wo du wann warst — alle anderen
+          Ausgaben ordnen sich über ihr Datum von selbst zu.</p>
+      </div>
+
       <button type="button" class="mehr-schalter" id="f-mehr-schalter">
         Mehr Angaben <span>▾</span>
       </button>
@@ -201,25 +209,14 @@
       <button type="button" class="knopf still breit" id="e-kurse-holen">Kurse aktualisieren</button>
     </div>
 
-    <div class="karte">
-      <div class="kachel-label">Ort nachtragen</div>
-      <p class="hinweis mini">Für Einträge von früher: Zeitraum wählen, Ort eintragen,
-        übernehmen. Damit bekommen auch deine alten Ausgaben ihre Stadt.</p>
-      <div class="zwei-spalten">
-        <div>
-          <label class="feld-label" for="e-nach-von">Von</label>
-          <input id="e-nach-von" type="date">
-        </div>
-        <div>
-          <label class="feld-label" for="e-nach-bis">Bis</label>
-          <input id="e-nach-bis" type="date">
-        </div>
-      </div>
-      <label class="feld-label" for="e-nach-ort">Ort</label>
-      <input id="e-nach-ort" type="text" placeholder="z.B. Lissabon" autocomplete="off"
-             list="ort-vorschlaege">
-      <button type="button" class="knopf still breit" id="e-nach-uebernehmen">Übernehmen</button>
-      <div class="sicherung-stand" id="e-nach-stand" hidden></div>
+    <div class="karte" id="karte-fehlende-orte" hidden>
+      <div class="kachel-label">Unterkünfte ohne Stadt</div>
+      <p class="hinweis mini">Diese Buchungen haben noch keine Stadt. Trag sie nach, und
+        alle Ausgaben aus dem jeweiligen Zeitraum ordnen sich rückwirkend zu.</p>
+      <div id="fehlende-orte" class="ruecklagen"></div>
+      <button type="button" class="knopf still breit" id="e-notizen-uebernehmen" hidden>
+        Städte aus den Notizen übernehmen
+      </button>
     </div>
 
     <div class="karte">
@@ -318,13 +315,9 @@
 
 <div class="overlay" id="ort-overlay" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ort-dialog-titel">
-    <h2 id="ort-dialog-titel">Wo bist du gerade?</h2>
-    <p class="hinweis mini">Einmal bei der Ankunft setzen. Danach bekommt jeder neue
-      Eintrag diesen Ort und diese Währung — du tippst weiter nur Betrag und Kategorie.</p>
-
-    <label class="feld-label" for="ort-eingabe">Ort</label>
-    <input id="ort-eingabe" type="text" placeholder="z.B. San José" autocomplete="off"
-           list="ort-vorschlaege">
+    <h2 id="ort-dialog-titel">Womit zahlst du hier?</h2>
+    <p class="hinweis mini">Einmal bei der Ankunft im Land setzen. Der <b>Ort</b> wird
+      nicht hier eingetragen — den kennt die App aus deinen Unterkünften.</p>
 
     <label class="feld-label" for="ort-waehrung-wahl">Währung vor Ort</label>
     <select id="ort-waehrung-wahl"></select>

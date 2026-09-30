@@ -219,27 +219,80 @@ const Budget = (function () {
     return zeilen;
   }
 
+  /* ---------- Wo du wann warst ----------
+
+     Der Ort wird NICHT je Ausgabe eingetippt, sondern aus den
+     Unterkuenften abgeleitet. Der Gedanke dahinter: Du schlaefst
+     jede Nacht irgendwo, und eine Unterkunftsbuchung hat ohnehin
+     einen Zeitraum. Daraus ergibt sich ein lueckenloser
+     Zeitstrahl - und jede andere Ausgabe findet ihren Ort ueber
+     ihr Datum, ganz ohne Zutun.
+
+     Das hat zwei Vorteile gegenueber einem Ort, den man von Hand
+     pflegt: Man kann ihn nicht vergessen, weil man die Unterkunft
+     ohnehin eintraegt. Und traegt man eine Unterkunft spaeter
+     nach, ordnen sich alle Ausgaben dieses Zeitraums rueckwirkend
+     von selbst richtig zu. */
+
+  function ortsZeitstrahl(ausgaben) {
+    const tag = new Map();
+
+    /* Spaeter angelegte Buchungen gewinnen: wer zwei Unterkuenfte
+       fuer dieselbe Nacht erfasst hat, meinte vermutlich die
+       zuletzt eingetragene. */
+    ausgaben
+      .filter(a => a.kategorie === 'unterkunft' && (a.ort || '').trim())
+      .sort((a, b) => (a.angelegt || 0) - (b.angelegt || 0))
+      .forEach(a => {
+        const ort = a.ort.trim();
+        tageEinerAusgabe(a).forEach(t => tag.set(t, ort));
+      });
+
+    return tag;
+  }
+
+  /* Wo warst du an einem bestimmten Tag?
+
+     Gibt es fuer den Tag keine Unterkunft - Nachtbus, bei Freunden
+     geschlafen, noch nicht eingetragen - gilt der zuletzt bekannte
+     Ort weiter. Das ist die ehrlichste Annahme: man bleibt, wo man
+     zuletzt geschlafen hat, bis man woanders schlaeft. */
+  function ortAmTag(zeitstrahl, datum) {
+    if (zeitstrahl.has(datum)) return zeitstrahl.get(datum);
+    let bester = null;
+    zeitstrahl.forEach((ort, t) => {
+      if (t < datum && (bester === null || t > bester)) bester = t;
+    });
+    return bester === null ? null : zeitstrahl.get(bester);
+  }
+
   /* ---------- Auswertung nach Ort ----------
 
      Die aussagekraeftige Zahl ist nicht die Summe, sondern der
      Schnitt pro Tag: "Lissabon 71 EUR/Tag, Porto 43 EUR/Tag" sagt
      etwas, "Lissabon 500 EUR" fast nichts - weil man dort
-     vielleicht dreimal so lange war. */
+     vielleicht dreimal so lange war.
+
+     Gerechnet wird tagesweise: eine Hostelbuchung, die ueber einen
+     Ortswechsel hinweg laeuft, verteilt ihre Anteile korrekt auf
+     beide Orte. */
 
   function proOrt(ausgaben, personId) {
+    const zeitstrahl = ortsZeitstrahl(ausgaben);
     const nachOrt = new Map();
 
     ausgaben.forEach(a => {
-      const wert = anteil(a, personId);
-      if (wert <= 0) return;
-      const name = (a.ort || '').trim() || '— ohne Ort —';
-      if (!nachOrt.has(name)) nachOrt.set(name, { betrag: 0, tage: new Set() });
-      const eintrag = nachOrt.get(name);
-      eintrag.betrag += wert;
-      /* Eine ueber mehrere Tage verteilte Buchung zaehlt auch
-         mehrere Tage - sonst saehe ein Ort mit einer langen
-         Hostelbuchung kuenstlich teuer aus. */
-      tageEinerAusgabe(a).forEach(t => eintrag.tage.add(t));
+      const tage = tageEinerAusgabe(a);
+      const proTag = anteil(a, personId) / tage.length;
+      if (proTag <= 0) return;
+
+      tage.forEach(t => {
+        const name = ortAmTag(zeitstrahl, t) || 'Ort noch unbekannt';
+        if (!nachOrt.has(name)) nachOrt.set(name, { betrag: 0, tage: new Set() });
+        const eintrag = nachOrt.get(name);
+        eintrag.betrag += proTag;
+        eintrag.tage.add(t);
+      });
     });
 
     return [...nachOrt.entries()]
@@ -296,7 +349,7 @@ const Budget = (function () {
   return {
     tagVerschieben, tageZwischen,
     tageEinerAusgabe, basis, anteil, anteilProTag, tagesSummen, summeAmTag,
-    plan, proKategorie, proOrt, salden, ausgleich
+    plan, proKategorie, proOrt, ortsZeitstrahl, ortAmTag, salden, ausgleich
   };
 
 })();

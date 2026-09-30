@@ -12,7 +12,7 @@
   /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
      sieht, welche Fassung auf dem Handy laeuft. Bei jeder
      Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
-  const APP_VERSION = 'v10';
+  const APP_VERSION = 'v11';
 
   let zustand = Store.laden();
 
@@ -152,9 +152,10 @@
      ========================================================== */
 
   function zeichneOrtsleiste() {
-    const ort = (zustand.aktuell.ort || '').trim();
+    const zeitstrahl = Budget.ortsZeitstrahl(zustand.ausgaben);
+    const ort = Budget.ortAmTag(zeitstrahl, Store.heuteAlsText());
     const name = $('ort-name');
-    name.textContent = ort || 'Ort setzen';
+    name.textContent = ort || 'Ort unbekannt – Unterkunft eintragen';
     name.classList.toggle('leer', !ort);
     $('ort-waehrung').textContent = lokaleWaehrung();
   }
@@ -167,8 +168,6 @@
       const o = (a.ort || '').trim();
       if (o) gesehen.add(o);
     });
-    const jetzt = (zustand.aktuell.ort || '').trim();
-    if (jetzt) gesehen.add(jetzt);
     return [...gesehen].sort((a, b) => a.localeCompare(b, 'de'));
   }
 
@@ -202,12 +201,9 @@
   /* --- Der Dialog --- */
 
   function ortDialogOeffnen() {
-    zeichneOrtVorschlaege();
-    $('ort-eingabe').value = zustand.aktuell.ort || '';
     waehrungsAuswahlFuellen($('ort-waehrung-wahl'), lokaleWaehrung());
     ortKursZeigen();
     $('ort-overlay').hidden = false;
-    setTimeout(() => $('ort-eingabe').focus(), 50);
   }
 
   function ortDialogSchliessen() {
@@ -255,7 +251,6 @@
   }
 
   async function ortUebernehmen() {
-    const ort = $('ort-eingabe').value.trim();
     const code = $('ort-waehrung-wahl').value;
     const basis = zustand.reise.waehrung;
 
@@ -275,10 +270,10 @@
       try { localStorage.setItem('backpack-budget-kurse', JSON.stringify(v)); } catch (e) {}
     }
 
-    zustand.aktuell = { ort: ort, waehrung: code };
+    zustand.aktuell = { ort: '', waehrung: code };
     ortDialogSchliessen();
     speichern();
-    melden(ort ? ort + ' · ' + code : code + ' übernommen');
+    melden('Zahlst jetzt in ' + code);
   }
 
   /* Wie betragLesen, aber ohne Rundung auf zwei Stellen - ein Kurs
@@ -527,12 +522,24 @@
         formKategorie = k.id;
         /* Bei Unterkunft ist der Zeitraum fast immer wichtig –
            deshalb klappt das Feld dann von selbst auf. */
-        if (k.id === 'unterkunft') $('f-mehr').hidden = false;
+        if (k.id === 'unterkunft') {
+          $('f-mehr').hidden = false;
+          /* Die Stadt der letzten Unterkunft vorschlagen – meist
+             bucht man mehrmals am selben Ort. */
+          if (!$('f-ort').value) {
+            const zeitstrahl = Budget.ortsZeitstrahl(zustand.ausgaben);
+            $('f-ort').value = Budget.ortAmTag(zeitstrahl, Store.heuteAlsText()) || '';
+          }
+        }
         zeichneFormular();
         verteilHinweis();
       };
       kats.append(kachel);
     });
+
+    /* Die Stadt wird nur bei Unterkunft verlangt - sie ist der
+       Anker, aus dem sich alle anderen Orte ableiten. */
+    $('f-unterkunft').hidden = formKategorie !== 'unterkunft';
 
     /* Gruppen-Felder nur zeigen, wenn ihr mehr als einer seid */
     $('f-gruppe').hidden = zustand.personen.length < 2;
@@ -605,6 +612,7 @@
 
   function formularLeeren() {
     formBestand = null;
+    $('f-ort').value = '';
     $('f-id').value = '';
     $('f-betrag').value = '';
     $('f-notiz').value = '';
@@ -622,6 +630,7 @@
 
   function formularFuellen(a) {
     formBestand = { waehrung: a.waehrung, kurs: a.kurs, ort: a.ort || '' };
+    $('f-ort').value = a.ort || '';
     $('f-id').value = a.id;
     $('f-betrag').value = String(a.betrag).replace('.', ',');
     $('f-notiz').value = a.notiz || '';
@@ -646,6 +655,7 @@
   function zeichneAusgaben() {
     const liste = $('ausgaben-liste');
     liste.textContent = '';
+    const listenZeitstrahl = Budget.ortsZeitstrahl(zustand.ausgaben);
 
     const alle = [...zustand.ausgaben].sort((a, b) =>
       a.datum === b.datum ? b.angelegt - a.angelegt : (a.datum < b.datum ? 1 : -1));
@@ -681,7 +691,8 @@
       const teile = [];
       if (a.notiz) teile.push(k.name);
       if (a.waehrung !== zustand.reise.waehrung) teile.push(geldIn(a.betrag, a.waehrung));
-      if (a.ort) teile.push(a.ort);
+      const ortHier = a.ort || Budget.ortAmTag(listenZeitstrahl, a.datum);
+      if (ortHier) teile.push(ortHier);
       if (anzahlTage > 1) teile.push('über ' + tage(anzahlTage) + ' verteilt');
       if (zustand.personen.length > 1) {
         teile.push(a.geteiltMit.length > 1
@@ -721,6 +732,14 @@
     const liste = $('orte-liste');
     liste.textContent = '';
     const teuerster = zeilen[0].proTag || 1;
+    const ohne = zeilen.find(z => z.ort === 'Ort noch unbekannt');
+    if (ohne) {
+      const hinweis = el('p', 'hinweis mini',
+        'Für ' + tage(ohne.tage) + ' fehlt noch eine Unterkunft mit Stadt. '
+        + 'Trag sie nach, dann ordnen sich diese Ausgaben von selbst zu.');
+      hinweis.style.margin = '0 0 4px';
+      liste.append(hinweis);
+    }
 
     zeilen.forEach(z => {
       const zeile = el('div', 'ort-zeile');
@@ -873,6 +892,7 @@
     waehrungsAuswahlFuellen($('e-waehrung'), zustand.reise.waehrung);
     zeichneKursStand();
     zeichneOrtVorschlaege();
+    zeichneFehlendeOrte();
 
     const dauer = Budget.tageZwischen(zustand.reise.start, zustand.reise.ende);
     $('e-dauer').value = dauer > 0 ? dauer : '';
@@ -978,6 +998,54 @@
       });
       auswahl.value = 'fortbewegung';
     }
+  }
+
+  /* Unterkuenfte ohne Stadt sind die einzigen Luecken, die von
+     Hand zu schliessen sind - alles andere haengt daran. */
+  function zeichneFehlendeOrte() {
+    const offen = zustand.ausgaben
+      .filter(a => a.kategorie === 'unterkunft' && !(a.ort || '').trim())
+      .sort((a, b) => a.datum < b.datum ? -1 : 1);
+
+    const liste = $('fehlende-orte');
+    /* Auch beim Leerwerden raeumen - sonst stehen erledigte Zeilen
+       im versteckten Kasten und tauchen spaeter wieder auf. */
+    liste.textContent = '';
+    $('karte-fehlende-orte').hidden = !offen.length;
+    if (!offen.length) return;
+
+    offen.forEach(a => {
+      const zeile = el('div', 'ruecklage fehlend-zeile');
+      const info = el('div', 'fehlend-info');
+      info.append(el('b', null, a.notiz || geld(Budget.basis(a))));
+      const anzahl = Budget.tageEinerAusgabe(a).length;
+      info.append(el('span', null,
+        datumKurz(a.datum) + (anzahl > 1 ? ' · ' + tage(anzahl) : '') +
+        (a.notiz ? ' · ' + geld(Budget.basis(a)) : '')));
+
+      const feld = document.createElement('input');
+      feld.type = 'text';
+      /* Die Notiz ist in der Praxis fast immer schon der Ortsname.
+         Vorschlagen statt ungefragt uebernehmen - bestaetigt wird
+         durch Antippen. */
+      feld.value = (a.notiz || '').trim();
+      feld.placeholder = 'Stadt';
+      feld.setAttribute('list', 'ort-vorschlaege');
+      feld.autocomplete = 'off';
+      feld.onchange = () => {
+        const wert = feld.value.trim();
+        if (!wert) return;
+        a.ort = wert;
+        speichern();
+        melden('„' + wert + '" eingetragen');
+      };
+
+      zeile.append(info, feld);
+      liste.append(zeile);
+    });
+
+    $('e-notizen-uebernehmen').hidden =
+      !offen.some(a => (a.notiz || '').trim());
   }
 
   function zeichneKursStand() {
@@ -1212,6 +1280,17 @@
       return;
     }
 
+    /* Bei Unterkunft ist die Stadt Pflicht: An ihr haengt der
+       ganze Zeitstrahl, aus dem sich jede andere Ausgabe ihren Ort
+       holt. Eine Unterkunft ohne Stadt reisst ein Loch hinein. */
+    const ortEingabe = $('f-ort').value.trim();
+    if (formKategorie === 'unterkunft' && !ortEingabe) {
+      melden('Bitte die Stadt eintragen');
+      $('f-unterkunft').hidden = false;
+      $('f-ort').focus();
+      return;
+    }
+
     const von = $('f-datum').value || Store.heuteAlsText();
     let bis = $('f-bis').value || '';
     if (bis && bis <= von) bis = '';
@@ -1234,7 +1313,11 @@
          was diese Ausgabe heute gekostet hat, soll sie in einem
          halben Jahr immer noch gekostet haben. */
       kurs: kurs,
-      ort: formBestand ? formBestand.ort : (zustand.aktuell.ort || '').trim(),
+      /* Nur Unterkuenfte tragen einen Ort. Alle anderen Ausgaben
+         bekommen ihn zur Anzeige ueber das Datum - so ordnen sie
+         sich auch dann noch richtig zu, wenn eine Unterkunft erst
+         spaeter nachgetragen oder korrigiert wird. */
+      ort: formKategorie === 'unterkunft' ? ortEingabe : '',
       kategorie: formKategorie,
       datum: von,
       bisDatum: bis,
@@ -1368,6 +1451,18 @@
     if (e.key === 'Escape' && !$('ort-overlay').hidden) ortDialogSchliessen();
   });
 
+  $('e-notizen-uebernehmen').onclick = () => {
+    const offen = zustand.ausgaben.filter(
+      a => a.kategorie === 'unterkunft' && !(a.ort || '').trim() && (a.notiz || '').trim());
+    if (!offen.length) return;
+    if (!confirm('Bei ' + eintraege(offen.length) + ' wird die Notiz als Stadt übernommen.\n\n'
+               + offen.slice(0, 6).map(a => '· ' + a.notiz.trim()).join('\n')
+               + (offen.length > 6 ? '\n…' : ''))) return;
+    offen.forEach(a => { a.ort = a.notiz.trim(); });
+    speichern();
+    melden(eintraege(offen.length) + ' übernommen');
+  };
+
   $('e-kurse-holen').onclick = async () => {
     melden('Kurse werden geholt …');
     try {
@@ -1378,59 +1473,6 @@
     } catch (e) {
       melden(e.message);
     }
-  };
-
-  /* Ort für einen Zeitraum nachtragen - damit bekommen auch die
-     Eintraege ihre Stadt, die vor dieser Funktion entstanden sind. */
-  $('e-nach-uebernehmen').onclick = () => {
-    const von = $('e-nach-von').value;
-    const bis = $('e-nach-bis').value;
-    const ort = $('e-nach-ort').value.trim();
-    const stand = $('e-nach-stand');
-
-    if (!von || !bis || bis < von) { melden('Bitte einen gültigen Zeitraum wählen'); return; }
-    if (!ort) { melden('Bitte einen Ort eintragen'); $('e-nach-ort').focus(); return; }
-
-    const betroffen = zustand.ausgaben.filter(a => a.datum >= von && a.datum <= bis);
-    stand.hidden = false;
-    stand.className = 'sicherung-stand';
-
-    if (!betroffen.length) {
-      stand.textContent = 'In diesem Zeitraum liegt kein Eintrag.';
-      return;
-    }
-
-    /* Nachtragen fuellt Luecken - es ueberschreibt nicht.
-
-       Wer einen alten Zeitraum nachtraegt, trifft sonst leicht
-       einen neueren Eintrag mit richtigem Ort und macht ihn
-       kaputt. Bereits gesetzte Orte bleiben deshalb stehen, und
-       nur wenn ueberhaupt keine Luecke da ist, wird gefragt. */
-    const offen = betroffen.filter(a => !a.ort);
-    const gesetzt = betroffen.length - offen.length;
-
-    if (!offen.length) {
-      const andere = betroffen.filter(a => a.ort !== ort).length;
-      if (!andere) {
-        stand.textContent = 'Alle ' + eintraege(betroffen.length) + ' stehen schon auf „' + ort + '".';
-        return;
-      }
-      if (!confirm('Alle ' + eintraege(betroffen.length) + ' in diesem Zeitraum haben schon einen Ort.\n\n'
-                 + 'Sollen sie auf „' + ort + '" geändert werden?')) return;
-      betroffen.forEach(a => { a.ort = ort; });
-      speichern();
-      stand.className = 'sicherung-stand ok';
-      stand.textContent = eintraege(betroffen.length) + ' auf „' + ort + '" geändert.';
-      melden(eintraege(betroffen.length) + ' geändert');
-      return;
-    }
-
-    offen.forEach(a => { a.ort = ort; });
-    speichern();
-    stand.className = 'sicherung-stand ok';
-    stand.textContent = eintraege(offen.length) + ' auf „' + ort + '" gesetzt.' +
-      (gesetzt ? ' ' + gesetzt + ' hatten schon einen Ort und blieben unverändert.' : '');
-    melden(eintraege(offen.length) + ' nachgetragen');
   };
 
   $('e-r-hinzu').onclick = () => {
