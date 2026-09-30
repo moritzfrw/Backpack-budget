@@ -3,7 +3,7 @@
    erhoehe die Zahl in VERSION – sonst sieht das Handy die
    alte Version weiter. */
 
-const VERSION = 'backpack-budget-v13';
+const VERSION = 'backpack-budget-v14';
 const DATEIEN = [
   './', './index.html',
   './css/style.css',

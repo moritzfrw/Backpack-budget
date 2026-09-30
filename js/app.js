@@ -12,7 +12,7 @@
   /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
      sieht, welche Fassung auf dem Handy laeuft. Bei jeder
      Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
-  const APP_VERSION = 'v13';
+  const APP_VERSION = 'v14';
 
   let zustand = Store.laden();
 
@@ -151,13 +151,14 @@
      bleibt Betrag plus Kategorie, wie bisher.
      ========================================================== */
 
+  /* Der Ort steht jetzt in der Kopfzeile, nicht mehr in einer
+     eigenen Leiste - hier bleibt nur die Waehrung. */
   function zeichneOrtsleiste() {
-    const zeitstrahl = Budget.ortsZeitstrahl(zustand.ausgaben);
-    const ort = Budget.ortAmTag(zeitstrahl, Store.heuteAlsText());
-    const name = $('ort-name');
-    name.textContent = ort || 'Ort unbekannt – Unterkunft eintragen';
-    name.classList.toggle('leer', !ort);
     $('ort-waehrung').textContent = lokaleWaehrung();
+  }
+
+  function aktuellerOrt() {
+    return Budget.ortAmTag(Budget.ortsZeitstrahl(zustand.ausgaben), Store.heuteAlsText());
   }
 
   /* Alle bisher benutzten Orte - fuellt die Vorschlagsliste, damit
@@ -301,17 +302,19 @@
     zeichneEinstellungen(p);
   }
 
+  /* Eine Kopfzeile statt drei Leisten: Reisename, darunter Stand
+     der Reise und aktueller Ort, rechts Waehrung und Abgleich. */
   function zeichneKopf(p) {
     $('kopf-reise').textContent = zustand.reise.name || 'Meine Reise';
-    if (!p.eingerichtet) {
-      $('kopf-fortschritt').textContent = 'Noch nicht eingerichtet';
-    } else if (p.status === 'vorher') {
-      $('kopf-fortschritt').textContent = 'Start am ' + datumKurz(p.start);
-    } else if (p.status === 'beendet') {
-      $('kopf-fortschritt').textContent = 'Reise beendet';
-    } else {
-      $('kopf-fortschritt').textContent = 'Tag ' + p.tagNummer + ' von ' + p.gesamtTage;
-    }
+
+    let stand;
+    if (!p.eingerichtet) stand = 'Noch nicht eingerichtet';
+    else if (p.status === 'vorher') stand = 'Start am ' + datumKurz(p.start);
+    else if (p.status === 'beendet') stand = 'Reise beendet';
+    else stand = 'Tag ' + p.tagNummer + ' von ' + p.gesamtTage;
+
+    const ort = aktuellerOrt();
+    $('kopf-fortschritt').textContent = ort ? stand + ' · ' + ort : stand;
   }
 
   /* ---------- Heute ---------- */
@@ -1145,13 +1148,18 @@
     zeichneSyncLeiste();
   }
 
+  /* Der Abgleich ist auf einen Punkt geschrumpft. Der Text dazu
+     steht weiterhin in den Einstellungen - hier waere er eine
+     dritte Zeile, und genau die sollte weg. Damit der Punkt nicht
+     rein optisch bleibt, traegt er den Stand als Beschriftung. */
   function zeichneSyncLeiste() {
-    const leiste = $('sync-leiste');
-    leiste.hidden = !Sync.eingerichtet();
-    if (leiste.hidden) return;
-    $('sync-punkt').className = 'sync-punkt ' +
+    const punkt = $('sync-punkt');
+    punkt.hidden = !Sync.eingerichtet();
+    if (punkt.hidden) return;
+    punkt.className = 'sync-punkt ' +
       ({ laeuft: 'laeuft', ok: 'ok', fehler: 'fehler', wartet: 'fehler' }[syncStatus] || '');
-    $('sync-text').textContent = syncMeldung || 'Abgleich eingerichtet';
+    punkt.setAttribute('aria-label', 'Abgleich: ' + (syncMeldung || 'eingerichtet'));
+    punkt.title = syncMeldung || 'Abgleich eingerichtet';
   }
 
   /* Nach einer Aenderung nicht sofort losschicken, sondern kurz
