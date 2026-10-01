@@ -43,11 +43,17 @@
       <button type="button" class="knopf primaer" id="setup-knopf">Reise einrichten</button>
     </div>
 
-    <div class="karte heute" id="heute-karte" hidden>
-      <div class="heute-label">Heute verfügbar</div>
+    <div class="karte heute" id="heute-karte" hidden tabindex="0" role="group"
+         aria-label="Tagesbudget, nach links und rechts wischbar">
+      <div class="tag-leiste">
+        <button type="button" class="tag-pfeil" id="tag-zurueck" aria-label="Tag davor">‹</button>
+        <span class="heute-label" id="heute-label">Heute verfügbar</span>
+        <button type="button" class="tag-pfeil" id="tag-vor" aria-label="Tag danach">›</button>
+      </div>
       <div class="heute-betrag" id="heute-betrag">–</div>
       <div class="balken"><div class="balken-fuell" id="heute-balken"></div></div>
       <div class="heute-fuss" id="heute-fuss"></div>
+      <button type="button" class="zurueck-heute" id="zurueck-heute" hidden>Zurück zu heute</button>
       <div class="rat" id="heute-rat"></div>
     </div>
 

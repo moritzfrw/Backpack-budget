@@ -181,6 +181,43 @@ const Budget = (function () {
     return p;
   }
 
+  /* ---------- Die Lage an einem einzelnen Tag ----------
+
+     Bewusst dieselbe Formel fuer gestern, heute und morgen:
+     (was vom Alltagsbudget uebrig ist) geteilt durch (die Tage,
+     die ab diesem Tag noch kommen).
+
+     Fuer einen vergangenen Tag rekonstruiert das, wie viel damals
+     zur Verfuegung stand. Fuer einen kuenftigen zeigt es, was
+     bleibt, wenn bis dahin nichts weiter dazukommt - wobei schon
+     verteilte Buchungen mitzaehlen: Eine Hostelzahlung ueber sechs
+     Naechte belegt die naechsten Tage bereits, und genau das soll
+     man vorher sehen koennen. */
+
+  function tagesLage(p, datum) {
+    const ausgegeben = summeAmTag(p.summen, datum);
+
+    let vorher = 0;
+    p.summen.forEach((betrag, t) => { if (t < datum) vorher += betrag; });
+
+    const restTage = p.ende ? tageZwischen(datum, p.ende) : null;
+    const budget = (restTage && restTage > 0)
+      ? (p.alltagsbudget - vorher) / restTage
+      : 0;
+
+    const heute = Store.heuteAlsText();
+    return {
+      datum,
+      budget,
+      ausgegeben,
+      verfuegbar: budget - ausgegeben,
+      restTage,
+      istHeute: datum === heute,
+      istVergangen: datum < heute,
+      istKuenftig: datum > heute
+    };
+  }
+
   /* ---------- Auswertung nach Kategorie ---------- */
 
   /* Bezahlte Ruecklagen sind echtes ausgegebenes Geld und gehoeren
@@ -363,7 +400,7 @@ const Budget = (function () {
   return {
     tagVerschieben, tageZwischen,
     tageEinerAusgabe, basis, anteil, anteilProTag, tagesSummen, summeAmTag,
-    plan, proKategorie, proOrt, ortsZeitstrahl, ortAmTag, salden, ausgleich
+    plan, tagesLage, proKategorie, proOrt, ortsZeitstrahl, ortAmTag, salden, ausgleich
   };
 
 })();

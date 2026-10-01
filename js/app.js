@@ -12,7 +12,7 @@
   /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
      sieht, welche Fassung auf dem Handy laeuft. Bei jeder
      Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
-  const APP_VERSION = 'v14';
+  const APP_VERSION = 'v15';
 
   let zustand = Store.laden();
 
@@ -23,6 +23,8 @@
      Kurs weiter. Sonst bekaeme eine Ausgabe aus Portugal beim
      Nachbessern in Costa Rica ploetzlich Colón verpasst. */
   let formBestand = null;
+  /* Welcher Tag auf der Budgetkarte steht. null = heute. */
+  let angezeigterTag = null;
 
   const $ = id => document.getElementById(id);
   const el = (tag, klasse, text) => {
@@ -393,29 +395,83 @@
     zeichneSicherung();
     $('setup-karte').hidden = p.eingerichtet;
     $('heute-karte').hidden = !p.eingerichtet;
-    if (p.eingerichtet) {
-      $('heute-betrag').textContent = geld(p.heuteVerfuegbar);
-      $('heute-betrag').classList.toggle('negativ', p.heuteVerfuegbar < 0);
-
-      const balken = $('heute-balken');
-      balken.className = 'balken-fuell';
-      const anteilProzent = p.heutigesBudget > 0
-        ? Math.min(100, p.heuteAusgegeben / p.heutigesBudget * 100) : 0;
-      balken.style.width = anteilProzent + '%';
-      if (p.heuteVerfuegbar < 0) balken.classList.add('drueber');
-      else if (anteilProzent > 80) balken.classList.add('warnung');
-
-      $('heute-fuss').textContent = geld(p.heuteAusgegeben) + ' von ' +
-        geld(p.heutigesBudget) + ' ausgegeben';
-
-      const rat = $('heute-rat');
-      rat.textContent = '';
-      ratSaetze(p).forEach(satz => {
-        const zeile = el('p', 'rat-satz' + (satz.warnung ? ' warnung' : satz.lob ? ' lob' : ''), satz.text);
-        rat.append(zeile);
-      });
-    }
+    if (p.eingerichtet) zeichneTagesKarte(p);
     zeichneHeuteListe(p);
+  }
+
+  /* Grenzen fuers Blaettern: nicht vor den Reisebeginn, nicht
+     hinter das Reiseende. */
+  function tagGrenzen(p) {
+    return { von: p.start, bis: p.ende };
+  }
+
+  function zeichneTagesKarte(p) {
+    const heute = Store.heuteAlsText();
+    const grenzen = tagGrenzen(p);
+    let tag = angezeigterTag || heute;
+    if (tag < grenzen.von) tag = grenzen.von;
+    if (grenzen.bis && tag > grenzen.bis) tag = grenzen.bis;
+
+    const lage = Budget.tagesLage(p, tag);
+
+    /* Beschriftung: gestern und morgen beim Namen nennen, alles
+       andere mit Datum - "Mi, 8. Okt." sagt mehr als "in 8 Tagen". */
+    let label;
+    if (lage.istHeute) label = 'Heute verfügbar';
+    else if (tag === Budget.tagVerschieben(heute, -1)) label = 'Gestern';
+    else if (tag === Budget.tagVerschieben(heute, 1)) label = 'Morgen verfügbar';
+    else label = datumKurz(tag, true);
+    $('heute-label').textContent = label;
+
+    $('heute-betrag').textContent = geld(lage.verfuegbar);
+    $('heute-betrag').classList.toggle('negativ', lage.verfuegbar < 0);
+
+    const balken = $('heute-balken');
+    balken.className = 'balken-fuell';
+    const anteilProzent = lage.budget > 0
+      ? Math.min(100, lage.ausgegeben / lage.budget * 100) : 0;
+    balken.style.width = anteilProzent + '%';
+    if (lage.verfuegbar < 0) balken.classList.add('drueber');
+    else if (anteilProzent > 80) balken.classList.add('warnung');
+
+    $('heute-fuss').textContent = geld(lage.ausgegeben) + ' von ' +
+      geld(lage.budget) + (lage.istKuenftig ? ' schon belegt' : ' ausgegeben');
+
+    $('zurueck-heute').hidden = lage.istHeute;
+    $('tag-zurueck').disabled = tag <= grenzen.von;
+    $('tag-vor').disabled = !!grenzen.bis && tag >= grenzen.bis;
+
+    const rat = $('heute-rat');
+    rat.textContent = '';
+    if (lage.istHeute) {
+      ratSaetze(p).forEach(satz => {
+        rat.append(el('p', 'rat-satz' + (satz.warnung ? ' warnung' : satz.lob ? ' lob' : ''), satz.text));
+      });
+    } else {
+      /* An fremden Tagen ergibt die Tagesberatung keinen Sinn -
+         ein Satz, der die Zahl einordnet, schon. */
+      const text = lage.istVergangen
+        ? (lage.verfuegbar >= 0
+            ? geld(lage.verfuegbar) + ' sind an diesem Tag übrig geblieben.'
+            : geld(-lage.verfuegbar) + ' zu viel an diesem Tag.')
+        : (lage.ausgegeben > 0
+            ? geld(lage.ausgegeben) + ' sind durch laufende Buchungen schon belegt.'
+            : 'Noch nichts belegt – der volle Betrag steht zur Verfügung.');
+      rat.append(el('p', 'rat-satz' + (lage.istVergangen && lage.verfuegbar < 0 ? ' warnung' : ''), text));
+    }
+  }
+
+  function tagBlaettern(richtung) {
+    const p = Budget.plan(zustand);
+    if (!p.eingerichtet) return;
+    const heute = Store.heuteAlsText();
+    const grenzen = tagGrenzen(p);
+    const jetzt = angezeigterTag || heute;
+    const neu = Budget.tagVerschieben(jetzt, richtung);
+    if (neu < grenzen.von) return;
+    if (grenzen.bis && neu > grenzen.bis) return;
+    angezeigterTag = (neu === heute) ? null : neu;
+    zeichneTagesKarte(p);
   }
 
   /* Die Saetze, die dir sagen, wie du dastehst. */
@@ -1381,6 +1437,9 @@
         ? geldIn(betrag, code) + ' auf ' + tage(Budget.tageZwischen(von, bis)) + ' verteilt'
         : geldIn(betrag, code) + ' eingetragen');
     }
+    /* Nach einem Eintrag wieder auf heute - sonst traegt man ein
+       und schaut weiter auf einen anderen Tag. */
+    angezeigterTag = null;
     formularLeeren();
     speichern();
   });
@@ -1485,6 +1544,44 @@
     zeichneSyncLeiste();
     melden('Verbindung getrennt');
   };
+
+  /* --- Blättern auf der Budgetkarte: wischen, Pfeile, Tasten --- */
+
+  $('tag-zurueck').onclick = () => tagBlaettern(-1);
+  $('tag-vor').onclick = () => tagBlaettern(1);
+  $('zurueck-heute').onclick = () => {
+    angezeigterTag = null;
+    zeichneTagesKarte(Budget.plan(zustand));
+  };
+
+  (function wischen() {
+    const karte = $('heute-karte');
+    let startX = 0, startY = 0, verfolgt = false;
+
+    karte.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) { verfolgt = false; return; }
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      verfolgt = true;
+    }, { passive: true });
+
+    karte.addEventListener('touchend', e => {
+      if (!verfolgt) return;
+      verfolgt = false;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      /* Nur als Wisch werten, wenn es deutlich waagerecht war -
+         sonst blaettert die Karte bei jedem Scrollen mit. */
+      if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      tagBlaettern(dx < 0 ? 1 : -1);
+    }, { passive: true });
+
+    karte.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); tagBlaettern(-1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); tagBlaettern(1); }
+    });
+  })();
 
   $('od-schliessen').onclick = () => { $('ort-detail-overlay').hidden = true; };
   $('ort-detail-overlay').addEventListener('click', e => {

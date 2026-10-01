@@ -230,7 +230,27 @@ main { max-width: 620px; margin: 0 auto; padding: 8px 18px 24px; }
 
 /* ---------- Heute-Karte ---------- */
 
-.heute-label { font-size: 13px; color: var(--text-leise); }
+.heute-karte, .karte.heute { touch-action: pan-y; }
+.karte.heute:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+
+.tag-leiste {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin: -4px -6px 0;
+}
+.heute-label { font-size: 13px; color: var(--text-leise); text-align: center; flex: 1; }
+.tag-pfeil {
+  border: none; background: none; cursor: pointer; flex: none;
+  color: var(--text-leise); font-size: 20px; line-height: 1;
+  padding: 4px 10px; border-radius: 8px; font-family: inherit;
+}
+.tag-pfeil:disabled { opacity: .22; cursor: default; }
+.tag-pfeil:focus-visible { outline: 2px solid var(--akzent); outline-offset: 1px; }
+
+.zurueck-heute {
+  display: block; margin: 10px auto 0; padding: 5px 13px;
+  border: 1px solid var(--rand); background: var(--grund); color: var(--text-leise);
+  border-radius: 999px; font-size: 12.5px; font-family: inherit; cursor: pointer;
+}
 .heute-betrag {
   font-size: 42px; font-weight: 680; letter-spacing: -.03em;
   margin: 4px 0 14px; font-variant-numeric: tabular-nums;
