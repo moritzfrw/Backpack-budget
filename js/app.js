@@ -12,7 +12,7 @@
   /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
      sieht, welche Fassung auf dem Handy laeuft. Bei jeder
      Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
-  const APP_VERSION = 'v15';
+  const APP_VERSION = 'v16';
 
   let zustand = Store.laden();
 
