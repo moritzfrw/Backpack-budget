@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Profil-Fassung des App-Symbols.
+       Kreisrund gedacht, weil TikTok, Instagram und YouTube alle
+       rund zuschneiden. Die Formen sind deutlich kraeftiger als im
+       App-Symbol: ein Profilbild ist im Feed oft nur 40 Pixel gross,
+       dort verschwinden duenne Linien. -->
+  <circle cx="256" cy="256" r="256" fill="#0a1322"/>
+
+  <!-- Rucksackkoerper -->
+  <path d="M256 96c-40 0-68 26-68 57v17h-34c-26 0-47 20-47 46v152c0 26 21 46 47 46h204c26 0 47-20 47-46V216c0-26-21-46-47-46h-34v-17c0-31-28-57-68-57zm0 40c17 0 28 9 28 17v17h-56v-17c0-8 11-17 28-17z"
+        fill="#c3ccd9"/>
+
+  <!-- Taschenklappe: eine kraeftige Form statt zweier duenner Striche -->
+  <rect x="188" y="252" width="136" height="54" rx="27" fill="#0a1322"/>
+  <rect x="188" y="336" width="136" height="30" rx="15" fill="#0a1322"/>
+</svg>
