@@ -11,6 +11,87 @@
 </head>
 <body>
 
+<div class="start" id="start" hidden>
+  <div class="start-buehne">
+
+    <!-- ---------- Einleitung ---------- -->
+    <section class="start-seite" data-seite="0">
+      <div class="start-marke">◈</div>
+      <h1>Reicht mein Geld bis zum Rückflug?</h1>
+      <p>Backpack Budget beantwortet genau diese eine Frage — jeden Tag neu.</p>
+    </section>
+
+    <section class="start-seite" data-seite="1" hidden>
+      <div class="start-bild" aria-hidden="true">
+        <span class="sb-betrag">24,50</span>
+        <span class="sb-kacheln"><i class="an">🍜</i><i>🚌</i><i>🛏️</i><i>🎟️</i></span>
+      </div>
+      <h1>Zwei Tipps pro Ausgabe</h1>
+      <p>Betrag eintippen, Kategorie antippen, fertig. Ort und Währung weiß die App
+         selbst, sobald du deine Unterkunft einträgst.</p>
+    </section>
+
+    <section class="start-seite" data-seite="2" hidden>
+      <div class="start-bild" aria-hidden="true">
+        <span class="sb-gross">43,74 €</span>
+        <span class="sb-balken"><i style="width:62%"></i></span>
+      </div>
+      <h1>Dein Tagesbudget rechnet sich selbst nach</h1>
+      <p>Gibst du heute zu viel aus, sinkt die Zahl von morgen. Sparst du, steigt sie.
+         Du musst nie etwas nachtragen.</p>
+    </section>
+
+    <!-- ---------- Einrichtung ---------- -->
+    <section class="start-seite" data-seite="3" hidden>
+      <div class="start-frage">Frage 1 von 3</div>
+      <h1>Wann geht's los?</h1>
+      <label class="feld-label" for="s-start">Erster Reisetag</label>
+      <input id="s-start" type="date">
+    </section>
+
+    <section class="start-seite" data-seite="4" hidden>
+      <div class="start-frage">Frage 2 von 3</div>
+      <h1>Wie lange bist du unterwegs?</h1>
+      <label class="feld-label" for="s-dauer">Tage</label>
+      <input id="s-dauer" type="text" inputmode="numeric" placeholder="140">
+      <p class="start-hilfe" id="s-dauer-hilfe"></p>
+    </section>
+
+    <section class="start-seite" data-seite="5" hidden>
+      <div class="start-frage">Frage 3 von 3</div>
+      <h1>Wie viel Geld hast du dafür?</h1>
+      <div class="zwei-spalten">
+        <div>
+          <label class="feld-label" for="s-budget">Gesamtbudget</label>
+          <input id="s-budget" type="text" inputmode="decimal" placeholder="5000">
+        </div>
+        <div>
+          <label class="feld-label" for="s-waehrung">Währung</label>
+          <select id="s-waehrung"></select>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- Ergebnis ---------- -->
+    <section class="start-seite start-fertig" data-seite="6" hidden>
+      <div class="start-frage">Dein Tagesbudget</div>
+      <div class="start-ergebnis" id="s-ergebnis">–</div>
+      <p id="s-ergebnis-sub"></p>
+      <p class="start-hilfe">Alles lässt sich später in den Einstellungen ändern.</p>
+    </section>
+
+  </div>
+
+  <div class="start-fuss">
+    <div class="start-punkte" id="start-punkte"></div>
+    <div class="start-knoepfe">
+      <button type="button" class="knopf still" id="start-zurueck" hidden>Zurück</button>
+      <button type="button" class="knopf primaer" id="start-weiter">Weiter</button>
+    </div>
+    <button type="button" class="start-ueberspringen" id="start-ueberspringen">Einleitung überspringen</button>
+  </div>
+</div>
+
 <header class="kopf">
   <div class="kopf-zeile">
     <span class="logo">◈</span>
@@ -34,13 +115,6 @@
       <div class="sicherung-titel" id="sicherung-titel">Sicherung fällig</div>
       <p class="hinweis" id="sicherung-text"></p>
       <button type="button" class="knopf primaer" id="sicherung-knopf">Jetzt sichern</button>
-    </div>
-
-    <div class="karte setup" id="setup-karte" hidden>
-      <div class="setup-titel">Richte zuerst deine Reise ein</div>
-      <p class="hinweis">Sag der App, wie lange du unterwegs bist und wie viel Geld du
-        dafür hast. Daraus rechnet sie aus, wie viel du pro Tag ausgeben darfst.</p>
-      <button type="button" class="knopf primaer" id="setup-knopf">Reise einrichten</button>
     </div>
 
     <div class="karte heute" id="heute-karte" hidden tabindex="0" role="group"

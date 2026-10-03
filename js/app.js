@@ -12,7 +12,7 @@
   /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
      sieht, welche Fassung auf dem Handy laeuft. Bei jeder
      Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
-  const APP_VERSION = 'v16';
+  const APP_VERSION = 'v17';
 
   let zustand = Store.laden();
 
@@ -290,6 +290,117 @@
   }
 
   /* ==========================================================
+     Der Startablauf
+
+     Drei Bildschirme Einleitung, drei Fragen, ein Ergebnis.
+     Bisher landete man beim ersten Oeffnen in den Einstellungen -
+     neun Karten, vierzehn Felder - und musste sich die drei
+     heraussuchen, auf die es ankommt.
+     ========================================================== */
+
+  const START_SEITEN = 7;
+  const ERSTE_FRAGE = 3;
+  let startSeite = 0;
+
+  function startZeigen() {
+    startSeite = 0;
+    $('s-start').value = zustand.reise.start || Store.heuteAlsText();
+    $('s-dauer').value = '';
+    $('s-budget').value = '';
+    waehrungsAuswahlFuellen($('s-waehrung'), zustand.reise.waehrung);
+    $('start').hidden = false;
+    zeichneStart();
+  }
+
+  function zeichneStart() {
+    document.querySelectorAll('.start-seite').forEach(seite => {
+      seite.hidden = Number(seite.dataset.seite) !== startSeite;
+    });
+
+    const punkte = $('start-punkte');
+    punkte.textContent = '';
+    for (let i = 0; i < START_SEITEN; i++) {
+      const p = el('i', i === startSeite ? 'an' : '');
+      punkte.append(p);
+    }
+
+    $('start-zurueck').hidden = startSeite === 0;
+    $('start-ueberspringen').hidden = startSeite >= ERSTE_FRAGE;
+    $('start-weiter').textContent =
+      startSeite === START_SEITEN - 1 ? 'Los geht’s' :
+      startSeite === START_SEITEN - 2 ? 'Fertig' : 'Weiter';
+
+    if (startSeite === 4) dauerHilfe();
+    if (startSeite === START_SEITEN - 1) startErgebnis();
+
+    /* Auf den Fragebildschirmen gleich ins Feld springen - spart
+       einen Tipp und zeigt, dass hier etwas einzugeben ist. */
+    const feld = { 3: 's-start', 4: 's-dauer', 5: 's-budget' }[startSeite];
+    if (feld) setTimeout(() => $(feld).focus(), 120);
+  }
+
+  function dauerHilfe() {
+    const tage = parseInt($('s-dauer').value, 10);
+    const hilfe = $('s-dauer-hilfe');
+    if (!(tage > 0) || !$('s-start').value) { hilfe.textContent = ''; return; }
+    const ende = Budget.tagVerschieben($('s-start').value, tage - 1);
+    hilfe.textContent = 'Letzter Reisetag: ' + datumKurz(ende, true);
+  }
+
+  function startErgebnis() {
+    const tage = parseInt($('s-dauer').value, 10) || 1;
+    const budget = betragLesen($('s-budget').value) || 0;
+    const code = $('s-waehrung').value;
+    $('s-ergebnis').textContent = geldIn(budget / tage, code) + ' pro Tag';
+    $('s-ergebnis-sub').textContent =
+      geldIn(budget, code) + ' geteilt durch ' + tage + (tage === 1 ? ' Tag' : ' Tage') +
+      '. Die App passt die Zahl täglich an das an, was du wirklich ausgibst.';
+  }
+
+  /* Prueft die aktuelle Seite. Gibt eine Meldung zurueck, wenn
+     etwas fehlt - sonst null. */
+  function startPruefen() {
+    if (startSeite === 3 && !$('s-start').value) return 'Bitte ein Startdatum wählen';
+    if (startSeite === 4) {
+      const tage = parseInt($('s-dauer').value, 10);
+      if (!(tage > 0)) return 'Bitte eine Anzahl Tage eintragen';
+      if (tage > 1095) return 'Mehr als drei Jahre? Bitte prüf die Zahl noch mal';
+    }
+    if (startSeite === 5) {
+      const budget = betragLesen($('s-budget').value);
+      if (!budget || budget <= 0) return 'Bitte dein Gesamtbudget eintragen';
+    }
+    return null;
+  }
+
+  function startWeiter() {
+    const fehlt = startPruefen();
+    if (fehlt) { melden(fehlt); return; }
+
+    if (startSeite < START_SEITEN - 1) {
+      startSeite++;
+      zeichneStart();
+      return;
+    }
+
+    /* Letzte Seite: uebernehmen und in die App */
+    const start = $('s-start').value;
+    const tage = parseInt($('s-dauer').value, 10);
+    zustand.reise.start = start;
+    zustand.reise.ende = Budget.tagVerschieben(start, tage - 1);
+    zustand.reise.gesamtbudget = betragLesen($('s-budget').value) || 0;
+    zustand.reise.waehrung = $('s-waehrung').value;
+    zustand.aktuell.waehrung = $('s-waehrung').value;
+
+    $('start').hidden = true;
+    speichern();
+    Waehrung.beiGelegenheitHolen(zustand.reise.waehrung).then(geholt => {
+      if (geholt) zeichnen();
+    });
+    melden('Los geht’s');
+  }
+
+  /* ==========================================================
      Zeichnen
      ========================================================== */
 
@@ -393,7 +504,6 @@
 
   function zeichneHeute(p) {
     zeichneSicherung();
-    $('setup-karte').hidden = p.eingerichtet;
     $('heute-karte').hidden = !p.eingerichtet;
     if (p.eingerichtet) zeichneTagesKarte(p);
     zeichneHeuteListe(p);
@@ -405,10 +515,31 @@
     return { von: p.start, bis: p.ende };
   }
 
+  /* Liegt der heutige Tag ueberhaupt in der Reise?
+
+     Vor dem Reisebeginn und nach dem Reiseende ist er es nicht -
+     und dann waere ein Knopf "Zurueck zu heute" eine Sackgasse:
+     Er springt auf einen Tag, den die Karte gar nicht anzeigen
+     kann, und landet nach dem Begrenzen wieder dort, wo man war. */
+  function heuteInReise(p) {
+    const heute = Store.heuteAlsText();
+    return heute >= p.start && (!p.ende || heute <= p.ende);
+  }
+
+  /* Der Tag, von dem aus geblaettert wird. Ausserhalb der Reise
+     ist das nicht "heute", sondern der naechstgelegene Reisetag. */
+  function bezugsTag(p) {
+    if (angezeigterTag) return angezeigterTag;
+    const heute = Store.heuteAlsText();
+    if (heute < p.start) return p.start;
+    if (p.ende && heute > p.ende) return p.ende;
+    return heute;
+  }
+
   function zeichneTagesKarte(p) {
     const heute = Store.heuteAlsText();
     const grenzen = tagGrenzen(p);
-    let tag = angezeigterTag || heute;
+    let tag = bezugsTag(p);
     if (tag < grenzen.von) tag = grenzen.von;
     if (grenzen.bis && tag > grenzen.bis) tag = grenzen.bis;
 
@@ -437,7 +568,7 @@
     $('heute-fuss').textContent = geld(lage.ausgegeben) + ' von ' +
       geld(lage.budget) + (lage.istKuenftig ? ' schon belegt' : ' ausgegeben');
 
-    $('zurueck-heute').hidden = lage.istHeute;
+    $('zurueck-heute').hidden = lage.istHeute || !heuteInReise(p);
     $('tag-zurueck').disabled = tag <= grenzen.von;
     $('tag-vor').disabled = !!grenzen.bis && tag >= grenzen.bis;
 
@@ -466,7 +597,7 @@
     if (!p.eingerichtet) return;
     const heute = Store.heuteAlsText();
     const grenzen = tagGrenzen(p);
-    const jetzt = angezeigterTag || heute;
+    const jetzt = bezugsTag(p);
     const neu = Budget.tagVerschieben(jetzt, richtung);
     if (neu < grenzen.von) return;
     if (grenzen.bis && neu > grenzen.bis) return;
@@ -1360,7 +1491,11 @@
     t.onclick = () => { ansichtWechseln(t.dataset.view); window.scrollTo(0, 0); };
   });
 
-  $('setup-knopf').onclick = () => { ansichtWechseln('einstellungen'); window.scrollTo(0, 0); };
+  $('start-weiter').onclick = startWeiter;
+  $('start-zurueck').onclick = () => { if (startSeite > 0) { startSeite--; zeichneStart(); } };
+  $('start-ueberspringen').onclick = () => { startSeite = ERSTE_FRAGE; zeichneStart(); };
+  $('s-dauer').addEventListener('input', dauerHilfe);
+  $('s-start').addEventListener('change', dauerHilfe);
 
   $('f-mehr-schalter').onclick = () => {
     $('f-mehr').hidden = false;
@@ -1769,6 +1904,9 @@
   formularLeeren();
   zeichnen();
   zeichneSyncLeiste();
+
+  /* Noch keine Reise? Dann zuerst durch den Startablauf. */
+  if (!Budget.plan(zustand).eingerichtet) startZeigen();
   zeichneEinstellungenSync();
 
   if (Sync.eingerichtet()) abgleichen(false);
