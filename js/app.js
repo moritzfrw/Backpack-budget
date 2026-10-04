@@ -12,7 +12,7 @@
   /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
      sieht, welche Fassung auf dem Handy laeuft. Bei jeder
      Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
-  const APP_VERSION = 'v17';
+  const APP_VERSION = 'v18';
 
   let zustand = Store.laden();
 
@@ -400,12 +400,43 @@
     melden('Los geht’s');
   }
 
+  /* Beispielreise laden. Nur aus dem Startablauf heraus erreichbar,
+     also nur dann, wenn ohnehin noch nichts eingetragen ist - es
+     kann niemandem etwas ueberschreiben. */
+  function beispielLaden() {
+    const z = Beispiel.erzeugen();
+    Store.sichern(z);
+    zustand = Store.laden();
+    zustand.beispiel = true;
+    Store.sichern(zustand);
+    $('start').hidden = true;
+    formGeteilt = new Set();
+    formularLeeren();
+    zeichnen();
+    melden('Beispielreise geladen');
+  }
+
+  function beispielVerwerfen() {
+    if (!confirm('Beispielreise verwerfen und mit einer eigenen anfangen?')) return;
+    localStorage.removeItem('backpack-budget-v1');
+    zustand = Store.laden();
+    formGeteilt = new Set();
+    formularLeeren();
+    zeichnen();
+    startZeigen();
+  }
+
+  function zeichneBeispielLeiste() {
+    $('beispiel-leiste').hidden = !zustand.beispiel;
+  }
+
   /* ==========================================================
      Zeichnen
      ========================================================== */
 
   function zeichnen() {
     const p = Budget.plan(zustand);
+    zeichneBeispielLeiste();
     zeichneOrtsleiste();
     zeichneKopf(p);
     zeichneHeute(p);
@@ -461,6 +492,9 @@
      Tag blosser Laerm. Deshalb zaehlen wir in dem Fall die Tage
      seit dem ersten Eintrag. */
   function sicherungFaellig() {
+    /* In der Beispielreise gibt es nichts zu sichern - die Mahnung
+       waere dort nur Laerm und schoebe den Inhalt nach unten. */
+    if (zustand.beispiel) return false;
     if (!zustand.ausgaben.length) return false;
     const alter = sicherungAlterTage();
     if (alter !== null) return alter >= sicherungIntervall();
@@ -1494,6 +1528,8 @@
   $('start-weiter').onclick = startWeiter;
   $('start-zurueck').onclick = () => { if (startSeite > 0) { startSeite--; zeichneStart(); } };
   $('start-ueberspringen').onclick = () => { startSeite = ERSTE_FRAGE; zeichneStart(); };
+  $('start-beispiel').onclick = beispielLaden;
+  $('beispiel-weg').onclick = beispielVerwerfen;
   $('s-dauer').addEventListener('input', dauerHilfe);
   $('s-start').addEventListener('change', dauerHilfe);
 

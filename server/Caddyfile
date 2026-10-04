@@ -7,7 +7,7 @@
 # eigenen Ordners nichts anlegen. Nachlesen mit:
 #     journalctl -u caddy -n 50
 
-157-180-70-168.sslip.io {
+DEINE-SERVER-IP.sslip.io {
 	encode gzip
 
 	# Alles weiterreichen an den Python-Dienst, der nur intern lauscht.

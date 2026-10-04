@@ -219,6 +219,20 @@ main { max-width: 620px; margin: 0 auto; padding: 8px 18px 24px; }
 }
 .start-ueberspringen:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 
+/* ---------- Hinweis auf die Beispielreise ---------- */
+
+.beispiel-leiste {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--warn); color: #15110a;
+  padding: 8px 14px; font-size: 12.5px; font-weight: 600;
+}
+.beispiel-leiste button {
+  flex: none; border: none; cursor: pointer; font-family: inherit;
+  font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px;
+  background: rgba(0,0,0,.22); color: inherit;
+}
+.beispiel-leiste button:focus-visible { outline: 2px solid #15110a; outline-offset: 1px; }
+
 /* ---------- Kopfzeile: eine Leiste statt drei ---------- */
 
 .kopf-zeile { display: flex; align-items: center; gap: 12px; }

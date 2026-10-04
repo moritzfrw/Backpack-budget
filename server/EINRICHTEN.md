@@ -1,6 +1,6 @@
 # Der Speicherdienst auf dem Server
 
-Was auf dem Hetzner-Server (Helsinki, `157.180.70.168`) für Backpack Budget
+Was auf dem Hetzner-Server (Helsinki) für Backpack Budget
 eingerichtet ist. Die Etsy-Automatisierung liegt getrennt davon in
 `/opt/etsy-pod-automation` und wird von hier nicht berührt.
 

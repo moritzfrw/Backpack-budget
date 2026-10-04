@@ -103,6 +103,8 @@ const Store = (function () {
     d.letzteSicherung = Number(d.letzteSicherung) || 0;
     d.aktuell = (d.aktuell && typeof d.aktuell === 'object') ? d.aktuell : { ort: '', waehrung: '' };
     d.stand = Number(d.stand) || 0;
+    /* Markierung der Beispielreise - sonst verschwaende sie beim Laden. */
+    d.beispiel = !!d.beispiel;
 
     /* Bis Version 2 stand in `waehrung` ein Zeichen wie '€'. Der
        Kursdienst kennt nur Codes, also uebersetzen wir einmalig. */
