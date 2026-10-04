@@ -17,8 +17,8 @@
     <!-- ---------- Einleitung ---------- -->
     <section class="start-seite" data-seite="0">
       <div class="start-marke">◈</div>
-      <h1>Reicht mein Geld bis zum Rückflug?</h1>
-      <p>Backpack Budget beantwortet genau diese eine Frage — jeden Tag neu.</p>
+      <h1 data-t>Reicht mein Geld bis zum Rückflug?</h1>
+      <p data-t>Backpack Budget beantwortet genau diese eine Frage — jeden Tag neu.</p>
     </section>
 
     <section class="start-seite" data-seite="1" hidden>
@@ -26,8 +26,8 @@
         <span class="sb-betrag">24,50</span>
         <span class="sb-kacheln"><i class="an">🍜</i><i>🚌</i><i>🛏️</i><i>🎟️</i></span>
       </div>
-      <h1>Zwei Tipps pro Ausgabe</h1>
-      <p>Betrag eintippen, Kategorie antippen, fertig. Ort und Währung weiß die App
+      <h1 data-t>Zwei Tipps pro Ausgabe</h1>
+      <p data-t>Betrag eintippen, Kategorie antippen, fertig. Ort und Währung weiß die App
          selbst, sobald du deine Unterkunft einträgst.</p>
     </section>
 
@@ -36,37 +36,37 @@
         <span class="sb-gross">43,74 €</span>
         <span class="sb-balken"><i style="width:62%"></i></span>
       </div>
-      <h1>Dein Tagesbudget rechnet sich selbst nach</h1>
-      <p>Gibst du heute zu viel aus, sinkt die Zahl von morgen. Sparst du, steigt sie.
+      <h1 data-t>Dein Tagesbudget rechnet sich selbst nach</h1>
+      <p data-t>Gibst du heute zu viel aus, sinkt die Zahl von morgen. Sparst du, steigt sie.
          Du musst nie etwas nachtragen.</p>
     </section>
 
     <!-- ---------- Einrichtung ---------- -->
     <section class="start-seite" data-seite="3" hidden>
-      <div class="start-frage">Frage 1 von 3</div>
-      <h1>Wann geht's los?</h1>
-      <label class="feld-label" for="s-start">Erster Reisetag</label>
+      <div class="start-frage" data-t>Frage 1 von 3</div>
+      <h1 data-t>Wann geht's los?</h1>
+      <label class="feld-label" for="s-start" data-t>Erster Reisetag</label>
       <input id="s-start" type="date">
     </section>
 
     <section class="start-seite" data-seite="4" hidden>
-      <div class="start-frage">Frage 2 von 3</div>
-      <h1>Wie lange bist du unterwegs?</h1>
-      <label class="feld-label" for="s-dauer">Tage</label>
+      <div class="start-frage" data-t>Frage 2 von 3</div>
+      <h1 data-t>Wie lange bist du unterwegs?</h1>
+      <label class="feld-label" for="s-dauer" data-t>Tage</label>
       <input id="s-dauer" type="text" inputmode="numeric" placeholder="140">
       <p class="start-hilfe" id="s-dauer-hilfe"></p>
     </section>
 
     <section class="start-seite" data-seite="5" hidden>
-      <div class="start-frage">Frage 3 von 3</div>
-      <h1>Wie viel Geld hast du dafür?</h1>
+      <div class="start-frage" data-t>Frage 3 von 3</div>
+      <h1 data-t>Wie viel Geld hast du dafür?</h1>
       <div class="zwei-spalten">
         <div>
-          <label class="feld-label" for="s-budget">Gesamtbudget</label>
+          <label class="feld-label" for="s-budget" data-t>Gesamtbudget</label>
           <input id="s-budget" type="text" inputmode="decimal" placeholder="5000">
         </div>
         <div>
-          <label class="feld-label" for="s-waehrung">Währung</label>
+          <label class="feld-label" for="s-waehrung" data-t>Währung</label>
           <select id="s-waehrung"></select>
         </div>
       </div>
@@ -74,10 +74,10 @@
 
     <!-- ---------- Ergebnis ---------- -->
     <section class="start-seite start-fertig" data-seite="6" hidden>
-      <div class="start-frage">Dein Tagesbudget</div>
+      <div class="start-frage" data-t>Dein Tagesbudget</div>
       <div class="start-ergebnis" id="s-ergebnis">–</div>
       <p id="s-ergebnis-sub"></p>
-      <p class="start-hilfe">Alles lässt sich später in den Einstellungen ändern.</p>
+      <p class="start-hilfe" data-t>Alles lässt sich später in den Einstellungen ändern.</p>
     </section>
 
   </div>
@@ -85,17 +85,17 @@
   <div class="start-fuss">
     <div class="start-punkte" id="start-punkte"></div>
     <div class="start-knoepfe">
-      <button type="button" class="knopf still" id="start-zurueck" hidden>Zurück</button>
+      <button type="button" class="knopf still" id="start-zurueck" hidden data-t>Zurück</button>
       <button type="button" class="knopf primaer" id="start-weiter">Weiter</button>
     </div>
-    <button type="button" class="start-ueberspringen" id="start-ueberspringen">Einleitung überspringen</button>
-    <button type="button" class="start-ueberspringen" id="start-beispiel">Erst mit Beispieldaten ansehen</button>
+    <button type="button" class="start-ueberspringen" id="start-ueberspringen" data-t>Einleitung überspringen</button>
+    <button type="button" class="start-ueberspringen" id="start-beispiel" data-t>Erst mit Beispieldaten ansehen</button>
   </div>
 </div>
 
 <div class="beispiel-leiste" id="beispiel-leiste" hidden>
-  <span>Beispielreise — erfundene Zahlen</span>
-  <button type="button" id="beispiel-weg">Leeren</button>
+  <span data-t>Beispielreise — erfundene Zahlen</span>
+  <button type="button" id="beispiel-weg" data-t>Leeren</button>
 </div>
 
 <header class="kopf">
@@ -120,30 +120,30 @@
     <div class="karte sicherung" id="sicherung-karte" hidden>
       <div class="sicherung-titel" id="sicherung-titel">Sicherung fällig</div>
       <p class="hinweis" id="sicherung-text"></p>
-      <button type="button" class="knopf primaer" id="sicherung-knopf">Jetzt sichern</button>
+      <button type="button" class="knopf primaer" id="sicherung-knopf" data-t>Jetzt sichern</button>
     </div>
 
     <div class="karte heute" id="heute-karte" hidden tabindex="0" role="group"
-         aria-label="Tagesbudget, nach links und rechts wischbar">
+         aria-label="Tagesbudget, nach links und rechts wischbar" data-t-aria-label>
       <div class="tag-leiste">
-        <button type="button" class="tag-pfeil" id="tag-zurueck" aria-label="Tag davor">‹</button>
+        <button type="button" class="tag-pfeil" id="tag-zurueck" aria-label="Tag davor" data-t-aria-label>‹</button>
         <span class="heute-label" id="heute-label">Heute verfügbar</span>
-        <button type="button" class="tag-pfeil" id="tag-vor" aria-label="Tag danach">›</button>
+        <button type="button" class="tag-pfeil" id="tag-vor" aria-label="Tag danach" data-t-aria-label>›</button>
       </div>
       <div class="heute-betrag" id="heute-betrag">–</div>
       <div class="balken"><div class="balken-fuell" id="heute-balken"></div></div>
       <div class="heute-fuss" id="heute-fuss"></div>
-      <button type="button" class="zurueck-heute" id="zurueck-heute" hidden>Zurück zu heute</button>
+      <button type="button" class="zurueck-heute" id="zurueck-heute" hidden data-t>Zurück zu heute</button>
       <div class="rat" id="heute-rat"></div>
     </div>
 
     <form class="karte formular" id="formular">
       <input type="hidden" id="f-id">
 
-      <label class="feld-label" for="f-betrag">Was hast du ausgegeben?</label>
+      <label class="feld-label" for="f-betrag" data-t>Was hast du ausgegeben?</label>
       <div class="betrag-zeile">
         <input class="betrag-eingabe" id="f-betrag" type="text" inputmode="decimal"
-               placeholder="0,00" autocomplete="off" required>
+               placeholder="0,00" data-t-placeholder autocomplete="off" required>
         <span class="waehrung" id="f-waehrung">€</span>
       </div>
       <div class="umrechnung" id="f-umrechnung" hidden></div>
@@ -151,49 +151,49 @@
       <div class="kat-kacheln" id="f-kategorien"></div>
 
       <div class="unterkunft-block" id="f-unterkunft" hidden>
-        <label class="feld-label" for="f-ort">Stadt <span class="pflicht">Pflicht</span></label>
-        <input id="f-ort" type="text" placeholder="z.B. San José" autocomplete="off"
+        <label class="feld-label" for="f-ort" data-t-html>Stadt <span class="pflicht">Pflicht</span></label>
+        <input id="f-ort" type="text" placeholder="z.B. San José" data-t-placeholder autocomplete="off"
                list="ort-vorschlaege">
-        <p class="hinweis mini">Daraus weiß die App, wo du wann warst — alle anderen
+        <p class="hinweis mini" data-t>Daraus weiß die App, wo du wann warst — alle anderen
           Ausgaben ordnen sich über ihr Datum von selbst zu.</p>
       </div>
 
-      <button type="button" class="mehr-schalter" id="f-mehr-schalter">
+      <button type="button" class="mehr-schalter" id="f-mehr-schalter" data-t-html>
         Mehr Angaben <span>▾</span>
       </button>
 
       <div class="mehr-panel" id="f-mehr" hidden>
         <div class="zwei-spalten">
           <div>
-            <label class="feld-label" for="f-datum">Datum</label>
+            <label class="feld-label" for="f-datum" data-t>Datum</label>
             <input id="f-datum" type="date">
           </div>
           <div>
-            <label class="feld-label" for="f-bis">Gebucht bis</label>
+            <label class="feld-label" for="f-bis" data-t>Gebucht bis</label>
             <input id="f-bis" type="date">
           </div>
         </div>
         <div class="verteil-hinweis" id="f-verteil" hidden></div>
 
-        <label class="feld-label" for="f-notiz">Notiz</label>
-        <input id="f-notiz" type="text" placeholder="z.B. Hostel Hanoi" autocomplete="off">
+        <label class="feld-label" for="f-notiz" data-t>Notiz</label>
+        <input id="f-notiz" type="text" placeholder="z.B. Hostel Hanoi" data-t-placeholder autocomplete="off">
 
         <div id="f-gruppe" hidden>
-          <label class="feld-label" for="f-bezahlt">Bezahlt von</label>
+          <label class="feld-label" for="f-bezahlt" data-t>Bezahlt von</label>
           <select id="f-bezahlt"></select>
-          <label class="feld-label">Geteilt mit</label>
+          <label class="feld-label" data-t>Geteilt mit</label>
           <div class="chips" id="f-geteilt"></div>
         </div>
       </div>
 
       <div class="formular-knoepfe">
         <button type="submit" class="knopf primaer" id="f-speichern">Eintragen</button>
-        <button type="button" class="knopf still" id="f-abbrechen" hidden>Abbrechen</button>
-        <button type="button" class="knopf loeschen" id="f-loeschen" hidden>Löschen</button>
+        <button type="button" class="knopf still" id="f-abbrechen" hidden data-t>Abbrechen</button>
+        <button type="button" class="knopf loeschen" id="f-loeschen" hidden data-t>Löschen</button>
       </div>
     </form>
 
-    <div class="listen-kopf" id="heute-kopf" hidden>Heute angerechnet</div>
+    <div class="listen-kopf" id="heute-kopf" hidden data-t>Heute angerechnet</div>
     <div id="heute-liste"></div>
 
   </section>
@@ -208,33 +208,33 @@
   <section class="view" id="view-auswertung" hidden>
 
     <div class="karte">
-      <div class="kachel-label">Reicht dein Geld?</div>
+      <div class="kachel-label" data-t>Reicht dein Geld?</div>
       <div class="prognose-wert" id="prognose-wert">–</div>
       <div class="kachel-sub" id="prognose-sub"></div>
       <div class="zahlen-gitter" id="prognose-zahlen"></div>
     </div>
 
     <div class="karte" id="karte-ruecklagen" hidden>
-      <div class="kachel-label">Zurückgelegt</div>
+      <div class="kachel-label" data-t>Zurückgelegt</div>
       <div id="ruecklagen-liste" class="ruecklagen"></div>
     </div>
 
     <div class="karte" id="karte-orte" hidden>
-      <div class="kachel-label">Was dich wo am Tag kostet</div>
-      <p class="hinweis mini">Alles zusammen. Tipp auf eine Stadt für die Aufschlüsselung.</p>
+      <div class="kachel-label" data-t>Was dich wo am Tag kostet</div>
+      <p class="hinweis mini" data-t>Alles zusammen. Tipp auf eine Stadt für die Aufschlüsselung.</p>
       <div id="orte-liste" class="orte"></div>
     </div>
 
     <div class="karte">
-      <div class="kachel-label">Wofür du dein Geld ausgibst</div>
+      <div class="kachel-label" data-t>Wofür du dein Geld ausgibst</div>
       <div id="kategorie-liste" class="kat-liste"></div>
     </div>
 
     <div class="karte" id="karte-reisekasse" hidden>
-      <div class="kachel-label">Stand der Reisekasse</div>
+      <div class="kachel-label" data-t>Stand der Reisekasse</div>
       <div id="salden-liste" class="salden"></div>
       <div class="trenner"></div>
-      <div class="kachel-label">Ausgleich – wer zahlt wem</div>
+      <div class="kachel-label" data-t>Ausgleich – wer zahlt wem</div>
       <div id="ausgleich-liste" class="ausgleich"></div>
     </div>
 
@@ -244,137 +244,145 @@
   <section class="view" id="view-einstellungen" hidden>
 
     <div class="karte">
-      <div class="kachel-label">1. Wie lange reist du?</div>
-      <label class="feld-label" for="e-reise">Name der Reise</label>
-      <input id="e-reise" type="text" placeholder="Südostasien 2026">
+      <div class="kachel-label" data-t>Sprache</div>
+      <select id="e-sprache">
+        <option value="de">Deutsch</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+
+    <div class="karte">
+      <div class="kachel-label" data-t>1. Wie lange reist du?</div>
+      <label class="feld-label" for="e-reise" data-t>Name der Reise</label>
+      <input id="e-reise" type="text" placeholder="Südostasien 2026" data-t-placeholder>
 
       <div class="zwei-spalten">
         <div>
-          <label class="feld-label" for="e-start">Start</label>
+          <label class="feld-label" for="e-start" data-t>Start</label>
           <input id="e-start" type="date">
         </div>
         <div>
-          <label class="feld-label" for="e-ende">Ende</label>
+          <label class="feld-label" for="e-ende" data-t>Ende</label>
           <input id="e-ende" type="date">
         </div>
       </div>
 
-      <label class="feld-label" for="e-dauer">…oder einfach die Dauer in Tagen</label>
+      <label class="feld-label" for="e-dauer" data-t>…oder einfach die Dauer in Tagen</label>
       <input id="e-dauer" type="text" inputmode="numeric" placeholder="120">
-      <p class="hinweis mini">Beides hängt zusammen: änderst du das eine, rechnet die App
+      <p class="hinweis mini" data-t>Beides hängt zusammen: änderst du das eine, rechnet die App
         das andere aus.</p>
     </div>
 
     <div class="karte">
-      <div class="kachel-label">2. Wie viel Geld hast du?</div>
+      <div class="kachel-label" data-t>2. Wie viel Geld hast du?</div>
       <div class="zwei-spalten">
         <div>
-          <label class="feld-label" for="e-gesamt">Gesamtbudget</label>
+          <label class="feld-label" for="e-gesamt" data-t>Gesamtbudget</label>
           <input id="e-gesamt" type="text" inputmode="decimal" placeholder="5000">
         </div>
         <div>
-          <label class="feld-label" for="e-waehrung">Deine Währung</label>
+          <label class="feld-label" for="e-waehrung" data-t>Deine Währung</label>
           <select id="e-waehrung"></select>
         </div>
       </div>
     </div>
 
     <div class="karte">
-      <div class="kachel-label">Wechselkurse</div>
-      <p class="hinweis mini">Jede Ausgabe merkt sich den Kurs vom Tag der Eingabe. Was du
+      <div class="kachel-label" data-t>Wechselkurse</div>
+      <p class="hinweis mini" data-t>Jede Ausgabe merkt sich den Kurs vom Tag der Eingabe. Was du
         einmal eingetragen hast, ändert sich nie wieder — auch nicht, wenn der Kurs
         schwankt.</p>
       <div class="sicherung-stand" id="e-kurs-stand"></div>
-      <button type="button" class="knopf still breit" id="e-kurse-holen">Kurse aktualisieren</button>
+      <button type="button" class="knopf still breit" id="e-kurse-holen" data-t>Kurse aktualisieren</button>
     </div>
 
     <div class="karte" id="karte-fehlende-orte" hidden>
-      <div class="kachel-label">Unterkünfte ohne Stadt</div>
-      <p class="hinweis mini">Diese Buchungen haben noch keine Stadt. Trag sie nach, und
+      <div class="kachel-label" data-t>Unterkünfte ohne Stadt</div>
+      <p class="hinweis mini" data-t>Diese Buchungen haben noch keine Stadt. Trag sie nach, und
         alle Ausgaben aus dem jeweiligen Zeitraum ordnen sich rückwirkend zu.</p>
       <div id="fehlende-orte" class="ruecklagen"></div>
-      <button type="button" class="knopf still breit" id="e-notizen-uebernehmen" hidden>
+      <button type="button" class="knopf still breit" id="e-notizen-uebernehmen" hidden data-t>
         Städte aus den Notizen übernehmen
       </button>
     </div>
 
     <div class="karte">
-      <div class="kachel-label">Rücklagen</div>
-      <p class="hinweis mini">Geld für etwas Bestimmtes, das noch kommt – ein Flug, ein
+      <div class="kachel-label" data-t>Rücklagen</div>
+      <p class="hinweis mini" data-t-html>Geld für etwas Bestimmtes, das noch kommt – ein Flug, ein
         Visum, ein Tauchkurs. Der Betrag wird vom Budget abgezogen, <b>bevor</b> durch die
         Tage geteilt wird, und taucht deshalb nie in deinem Tagesbudget auf.</p>
       <div id="e-ruecklagen" class="ruecklagen"></div>
       <div class="ruecklage-neu">
-        <input id="e-r-name" type="text" placeholder="z.B. Flug Südamerika" autocomplete="off">
+        <input id="e-r-name" type="text" placeholder="z.B. Flug Südamerika" data-t-placeholder autocomplete="off">
         <div class="zwei-spalten">
           <input id="e-r-betrag" type="text" inputmode="decimal" placeholder="700">
           <select id="e-r-kategorie"></select>
         </div>
-        <button type="button" class="knopf klein breit" id="e-r-hinzu">Rücklage anlegen</button>
+        <button type="button" class="knopf klein breit" id="e-r-hinzu" data-t>Rücklage anlegen</button>
       </div>
     </div>
 
     <div class="karte ergebnis-karte">
-      <div class="kachel-label">3. Dein Tagesbudget</div>
+      <div class="kachel-label" data-t>3. Dein Tagesbudget</div>
       <div class="ergebnis-wert" id="e-ergebnis">–</div>
       <div class="kachel-sub" id="e-ergebnis-sub">Trag oben Zeitraum und Budget ein.</div>
     </div>
 
     <div class="karte">
-      <div class="kachel-label">Mitreisende</div>
-      <p class="hinweis mini">Nur nötig, wenn ihr eine gemeinsame Kasse führt. Reist du
+      <div class="kachel-label" data-t>Mitreisende</div>
+      <p class="hinweis mini" data-t>Nur nötig, wenn ihr eine gemeinsame Kasse führt. Reist du
         allein, lass es einfach so.</p>
       <div id="e-personen" class="personen"></div>
       <div class="zeile-eingabe">
-        <input id="e-neue-person" type="text" placeholder="Name" autocomplete="off">
-        <button type="button" class="knopf klein" id="e-person-hinzu">Hinzufügen</button>
+        <input id="e-neue-person" type="text" placeholder="Name" data-t-placeholder autocomplete="off">
+        <button type="button" class="knopf klein" id="e-person-hinzu" data-t>Hinzufügen</button>
       </div>
       <div id="e-ich-block" hidden>
-        <label class="feld-label" for="e-ich">Das bin ich</label>
+        <label class="feld-label" for="e-ich" data-t>Das bin ich</label>
         <select id="e-ich"></select>
       </div>
     </div>
 
     <div class="karte">
-      <div class="kachel-label">Abgleich mit deinem Server</div>
-      <p class="hinweis mini">Ohne das läuft die App vollständig weiter – die Daten
+      <div class="kachel-label" data-t>Abgleich mit deinem Server</div>
+      <p class="hinweis mini" data-t>Ohne das läuft die App vollständig weiter – die Daten
         liegen dann nur auf diesem Gerät. Mit Server-Abgleich wird jede Änderung
         zusätzlich dorthin geschrieben und überlebt auch ein verlorenes Handy.</p>
       <div class="sync-stand" id="e-sync-stand"></div>
 
-      <label class="feld-label" for="e-sync-adresse">Adresse</label>
-      <input id="e-sync-adresse" type="text" placeholder="https://…" autocomplete="off"
+      <label class="feld-label" for="e-sync-adresse" data-t>Adresse</label>
+      <input id="e-sync-adresse" type="text" placeholder="https://…" data-t-placeholder autocomplete="off"
              autocapitalize="off" spellcheck="false">
 
-      <label class="feld-label" for="e-sync-schluessel">Zugangsschlüssel</label>
+      <label class="feld-label" for="e-sync-schluessel" data-t>Zugangsschlüssel</label>
       <!-- Bewusst ein normales Textfeld und kein Passwortfeld: der
            Schluessel wird einmal am Handy abgetippt, und Tippfehler
            in 38 unsichtbaren Zeichen sucht man sich zu Tode. Nach dem
            Verbinden wird das Feld ohnehin geleert. -->
-      <input id="e-sync-schluessel" type="text" placeholder="einmal eintragen"
+      <input id="e-sync-schluessel" type="text" placeholder="einmal eintragen" data-t-placeholder
              autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-      <p class="hinweis mini">Groß- und Kleinschreibung müssen genau stimmen.</p>
+      <p class="hinweis mini" data-t>Groß- und Kleinschreibung müssen genau stimmen.</p>
 
       <div class="formular-knoepfe">
-        <button type="button" class="knopf primaer" id="e-sync-verbinden">Verbinden</button>
-        <button type="button" class="knopf still" id="e-sync-jetzt">Jetzt abgleichen</button>
+        <button type="button" class="knopf primaer" id="e-sync-verbinden" data-t>Verbinden</button>
+        <button type="button" class="knopf still" id="e-sync-jetzt" data-t>Jetzt abgleichen</button>
       </div>
-      <button type="button" class="knopf gefahr" id="e-sync-trennen" hidden>Verbindung trennen</button>
+      <button type="button" class="knopf gefahr" id="e-sync-trennen" hidden data-t>Verbindung trennen</button>
     </div>
 
     <div class="karte">
-      <div class="kachel-label">Daten</div>
-      <p class="hinweis">Deine Ausgaben liegen nur auf diesem Gerät – sie gehen nie
+      <div class="kachel-label" data-t>Daten</div>
+      <p class="hinweis" data-t>Deine Ausgaben liegen nur auf diesem Gerät – sie gehen nie
         übers Internet. Das heißt aber auch: Handy weg, Daten weg. Hol dir deshalb
         regelmäßig eine Sicherung und leg sie in iCloud, Google Drive oder schick
         sie dir selbst per Mail.</p>
       <div class="sicherung-stand" id="e-sicherung-stand"></div>
       <div class="formular-knoepfe">
-        <button type="button" class="knopf still" id="e-export">Sicherung holen</button>
-        <button type="button" class="knopf still" id="e-import">Sicherung laden</button>
+        <button type="button" class="knopf still" id="e-export" data-t>Sicherung holen</button>
+        <button type="button" class="knopf still" id="e-import" data-t>Sicherung laden</button>
       </div>
       <input type="file" id="e-datei" accept="application/json" hidden>
-      <button type="button" class="knopf gefahr" id="e-reset">Alle Daten löschen</button>
+      <button type="button" class="knopf gefahr" id="e-reset" data-t>Alle Daten löschen</button>
     </div>
 
     <p class="fusszeile" id="e-version"></p>
@@ -384,10 +392,10 @@
 </main>
 
 <nav class="tabbar">
-  <button class="tab aktiv" data-view="heute"><span>◐</span>Heute</button>
-  <button class="tab" data-view="ausgaben"><span>≡</span>Ausgaben</button>
-  <button class="tab" data-view="auswertung"><span>◍</span>Auswertung</button>
-  <button class="tab" data-view="einstellungen"><span>⚙</span>Einstellungen</button>
+  <button class="tab aktiv" data-view="heute" data-t-html><span>◐</span>Heute</button>
+  <button class="tab" data-view="ausgaben" data-t-html><span>≡</span>Ausgaben</button>
+  <button class="tab" data-view="auswertung" data-t-html><span>◍</span>Auswertung</button>
+  <button class="tab" data-view="einstellungen" data-t-html><span>⚙</span>Einstellungen</button>
 </nav>
 
 <datalist id="ort-vorschlaege"></datalist>
@@ -401,31 +409,33 @@
     </div>
     <div class="od-liste" id="od-liste"></div>
     <div class="formular-knoepfe">
-      <button type="button" class="knopf still" id="od-schliessen">Schließen</button>
+      <button type="button" class="knopf still" id="od-schliessen" data-t>Schließen</button>
     </div>
   </div>
 </div>
 
 <div class="overlay" id="ort-overlay" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ort-dialog-titel">
-    <h2 id="ort-dialog-titel">Womit zahlst du hier?</h2>
-    <p class="hinweis mini">Einmal bei der Ankunft im Land setzen. Der <b>Ort</b> wird
+    <h2 id="ort-dialog-titel" data-t>Womit zahlst du hier?</h2>
+    <p class="hinweis mini" data-t-html>Einmal bei der Ankunft im Land setzen. Der <b>Ort</b> wird
       nicht hier eingetragen — den kennt die App aus deinen Unterkünften.</p>
 
-    <label class="feld-label" for="ort-waehrung-wahl">Währung vor Ort</label>
+    <label class="feld-label" for="ort-waehrung-wahl" data-t>Währung vor Ort</label>
     <select id="ort-waehrung-wahl"></select>
 
     <div class="kurs-hinweis" id="ort-kurs-hinweis"></div>
 
     <div class="formular-knoepfe">
-      <button type="button" class="knopf primaer" id="ort-uebernehmen">Übernehmen</button>
-      <button type="button" class="knopf still" id="ort-abbrechen">Abbrechen</button>
+      <button type="button" class="knopf primaer" id="ort-uebernehmen" data-t>Übernehmen</button>
+      <button type="button" class="knopf still" id="ort-abbrechen" data-t>Abbrechen</button>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast" hidden></div>
 
+<script src="js/sprache.js"></script>
+<script src="js/englisch.js"></script>
 <script src="js/store.js"></script>
 <script src="js/waehrung.js"></script>
 <script src="js/beispiel.js"></script>

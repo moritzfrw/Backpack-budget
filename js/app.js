@@ -12,7 +12,7 @@
   /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
      sieht, welche Fassung auf dem Handy laeuft. Bei jeder
      Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
-  const APP_VERSION = 'v19';
+  const APP_VERSION = 'v20';
 
   let zustand = Store.laden();
 
@@ -48,11 +48,11 @@
      fuer die halbe Welt falsch. */
   function geldIn(betrag, code) {
     try {
-      return new Intl.NumberFormat('de-DE', {
+      return new Intl.NumberFormat(Sprache.kennung(), {
         style: 'currency', currency: code, currencyDisplay: 'narrowSymbol'
       }).format(betrag || 0);
     } catch (e) {
-      const zahl = new Intl.NumberFormat('de-DE', {
+      const zahl = new Intl.NumberFormat(Sprache.kennung(), {
         minimumFractionDigits: 2, maximumFractionDigits: 2
       }).format(betrag || 0);
       return zahl + ' ' + code;
@@ -79,13 +79,40 @@
      Regel: Ein Komma ist immer das Dezimaltrennzeichen. Steht nur
      ein Punkt da und folgen ihm genau drei Ziffern, ist es ein
      Tausenderpunkt. Sonst ist der Punkt das Dezimaltrennzeichen. */
-  function betragLesen(text) {
+  /* Macht aus dem, was jemand eingetippt hat, eine Zahl mit Punkt
+     als Dezimaltrennzeichen - gleich ob deutsch oder englisch
+     geschrieben. Gibt null zurueck, wenn nichts Brauchbares
+     drinsteht.
+
+     Welches Zeichen trennt die Nachkommastellen? Stehen BEIDE im
+     Text, ist es immer das hintere: "1.250,50" ist deutsch,
+     "1,250.50" englisch. Das laesst sich am Text selbst ablesen
+     und braucht die eingestellte Sprache nicht - wer auf Englisch
+     umstellt und weiter deutsch tippt, bekommt trotzdem das
+     Richtige. */
+  function zahlLesen(text) {
     let roh = String(text).replace(/[^0-9,.-]/g, '');
     if (!roh) return null;
 
-    if (roh.indexOf(',') !== -1) {
-      roh = roh.replace(/\./g, '').replace(',', '.');
-    } else {
+    const kommaAn = roh.lastIndexOf(',');
+    const punktAn = roh.lastIndexOf('.');
+
+    if (kommaAn !== -1 && punktAn !== -1) {
+      const dezimal = kommaAn > punktAn ? ',' : '.';
+      const tausend = dezimal === ',' ? '.' : ',';
+      roh = roh.split(tausend).join('').replace(dezimal, '.');
+
+    } else if (kommaAn !== -1) {
+      /* Nur Kommas. Drei Ziffern dahinter heisst Tausender
+         ("30,000"), alles andere Nachkommastellen ("12,50"). */
+      const teile = roh.split(',');
+      const istTausender = teile.length > 1 &&
+                           teile.slice(1).every(t => t.length === 3);
+      roh = istTausender ? teile.join('') : teile.join('.');
+
+    } else if (punktAn !== -1) {
+      /* Dasselbe mit Punkten: "30.000" sind dreissigtausend,
+         "12.50" sind zwoelf-fuenfzig. */
       const teile = roh.split('.');
       const istTausender = teile.length > 1 &&
                            teile.slice(1).every(t => t.length === 3);
@@ -93,7 +120,14 @@
     }
 
     const zahl = parseFloat(roh);
-    return isNaN(zahl) ? null : Math.round(zahl * 100) / 100;
+    return isNaN(zahl) ? null : zahl;
+  }
+
+  /* Betraege werden auf Cent gerundet, Kurse nicht - ein Kurs wie
+     29400,37 verliert sonst Stellen, die hinten wehtun. */
+  function betragLesen(text) {
+    const zahl = zahlLesen(text);
+    return zahl === null ? null : Math.round(zahl * 100) / 100;
   }
 
   function datumLesbar(datumText) {
@@ -106,13 +140,13 @@
   function datumKurz(datumText, mitWochentag) {
     if (!datumText) return '–';
     const [j, m, t] = datumText.split('-').map(Number);
-    return new Date(j, m - 1, t).toLocaleDateString('de-DE', mitWochentag
+    return new Date(j, m - 1, t).toLocaleDateString(Sprache.kennung(), mitWochentag
       ? { weekday: 'short', day: 'numeric', month: 'short' }
       : { day: 'numeric', month: 'long' });
   }
 
-  function tage(n) { return n + (n === 1 ? ' Tag' : ' Tage'); }
-  function eintraege(n) { return n + (n === 1 ? ' Eintrag' : ' Einträge'); }
+  function tage(n) { return Sprache.tn(n, '{n} Tag', '{n} Tage'); }
+  function eintraege(n) { return Sprache.tn(n, '{n} Eintrag', '{n} Einträge'); }
 
   function person(id) {
     return zustand.personen.find(p => p.id === id) || { id, name: '?' };
@@ -187,7 +221,7 @@
   function waehrungsAuswahlFuellen(auswahl, gewaehlt) {
     auswahl.textContent = '';
     Waehrung.LISTE.forEach(w => {
-      const o = el('option', null, w.code + ' – ' + w.name);
+      const o = el('option', null, w.code + ' – ' + Sprache.t(w.name));
       o.value = w.code;
       auswahl.append(o);
     });
@@ -224,7 +258,7 @@
     kasten.className = 'kurs-hinweis';
 
     if (code === basis) {
-      kasten.textContent = 'Das ist deine eigene Währung – nichts umzurechnen.';
+      kasten.textContent = Sprache.t('Das ist deine eigene Währung – nichts umzurechnen.');
       return;
     }
 
@@ -238,17 +272,17 @@
     feld.id = 'ort-kurs-feld';
     feld.className = 'kurs-feld';
     feld.value = bekannt ? String(bekannt).replace('.', ',') : '';
-    feld.placeholder = 'Kurs eintragen';
+    feld.placeholder = Sprache.t('Kurs eintragen');
     zeile.append(feld, document.createTextNode(' ' + code));
     kasten.append(zeile);
 
     const alter = Waehrung.alterTage();
     const sub = el('div', 'kachel-sub');
-    if (bekannt && alter === 0) sub.textContent = 'Heute vom Kursdienst geholt. Du kannst ihn überschreiben.';
-    else if (bekannt) sub.textContent = 'Kurs ist ' + tage(alter) + ' alt. Du kannst ihn überschreiben.';
+    if (bekannt && alter === 0) sub.textContent = Sprache.t('Heute vom Kursdienst geholt. Du kannst ihn überschreiben.');
+    else if (bekannt) sub.textContent = Sprache.t('Kurs ist {alter} alt. Du kannst ihn überschreiben.', { alter: tage(alter) });
     else {
       kasten.classList.add('warn');
-      sub.textContent = 'Kein Kurs bekannt – ohne Netz bitte von Hand eintragen.';
+      sub.textContent = Sprache.t('Kein Kurs bekannt – ohne Netz bitte von Hand eintragen.');
     }
     kasten.append(sub);
   }
@@ -261,7 +295,7 @@
       const feld = $('ort-kurs-feld');
       const kurs = feld ? betragLesenGenau(feld.value) : null;
       if (!kurs || kurs <= 0) {
-        melden('Bitte einen Kurs eintragen');
+        melden(Sprache.t('Bitte einen Kurs eintragen'));
         if (feld) feld.focus();
         return;
       }
@@ -276,17 +310,18 @@
     zustand.aktuell = { ort: '', waehrung: code };
     ortDialogSchliessen();
     speichern();
-    melden('Zahlst jetzt in ' + code);
+    melden(Sprache.t('Zahlst jetzt in {code}', { code: code }));
   }
 
   /* Wie betragLesen, aber ohne Rundung auf zwei Stellen - ein Kurs
      wie 29431,412651 darf nicht auf 29431,41 gekuerzt werden. */
+  /* Kurse laufen durch dieselbe Lesart wie Betraege, nur ohne
+     Rundung. Das ist hier wichtiger als irgendwo sonst: Wer den
+     Vietnam-Kurs als "24,100" eintippt, meint vierundzwanzigtausend
+     - ein Missverstaendnis an dieser Stelle verrechnet die ganze
+     Reise um den Faktor tausend. */
   function betragLesenGenau(text) {
-    let roh = String(text).replace(/[^0-9,.-]/g, '');
-    if (!roh) return null;
-    if (roh.indexOf(',') !== -1) roh = roh.replace(/\./g, '').replace(',', '.');
-    const zahl = parseFloat(roh);
-    return isNaN(zahl) ? null : zahl;
+    return zahlLesen(text);
   }
 
   /* ==========================================================
@@ -327,8 +362,8 @@
     $('start-zurueck').hidden = startSeite === 0;
     $('start-ueberspringen').hidden = startSeite >= ERSTE_FRAGE;
     $('start-weiter').textContent =
-      startSeite === START_SEITEN - 1 ? 'Los geht’s' :
-      startSeite === START_SEITEN - 2 ? 'Fertig' : 'Weiter';
+      startSeite === START_SEITEN - 1 ? Sprache.t('Los geht’s') :
+      startSeite === START_SEITEN - 2 ? Sprache.t('Fertig') : Sprache.t('Weiter');
 
     if (startSeite === 4) dauerHilfe();
     if (startSeite === START_SEITEN - 1) startErgebnis();
@@ -344,31 +379,31 @@
     const hilfe = $('s-dauer-hilfe');
     if (!(tage > 0) || !$('s-start').value) { hilfe.textContent = ''; return; }
     const ende = Budget.tagVerschieben($('s-start').value, tage - 1);
-    hilfe.textContent = 'Letzter Reisetag: ' + datumKurz(ende, true);
+    hilfe.textContent = Sprache.t('Letzter Reisetag: {datum}', { datum: datumKurz(ende, true) });
   }
 
   function startErgebnis() {
     const tage = parseInt($('s-dauer').value, 10) || 1;
     const budget = betragLesen($('s-budget').value) || 0;
     const code = $('s-waehrung').value;
-    $('s-ergebnis').textContent = geldIn(budget / tage, code) + ' pro Tag';
-    $('s-ergebnis-sub').textContent =
-      geldIn(budget, code) + ' geteilt durch ' + tage + (tage === 1 ? ' Tag' : ' Tage') +
-      '. Die App passt die Zahl täglich an das an, was du wirklich ausgibst.';
+    $('s-ergebnis').textContent = Sprache.t('{geld} pro Tag', { geld: geldIn(budget / tage, code) });
+    $('s-ergebnis-sub').textContent = Sprache.t(
+      '{budget} geteilt durch {tage}. Die App passt die Zahl täglich an das an, was du wirklich ausgibst.',
+      { budget: geldIn(budget, code), tage: Sprache.tn(tage, '{n} Tag', '{n} Tage') });
   }
 
   /* Prueft die aktuelle Seite. Gibt eine Meldung zurueck, wenn
      etwas fehlt - sonst null. */
   function startPruefen() {
-    if (startSeite === 3 && !$('s-start').value) return 'Bitte ein Startdatum wählen';
+    if (startSeite === 3 && !$('s-start').value) return Sprache.t('Bitte ein Startdatum wählen');
     if (startSeite === 4) {
       const tage = parseInt($('s-dauer').value, 10);
-      if (!(tage > 0)) return 'Bitte eine Anzahl Tage eintragen';
-      if (tage > 1095) return 'Mehr als drei Jahre? Bitte prüf die Zahl noch mal';
+      if (!(tage > 0)) return Sprache.t('Bitte eine Anzahl Tage eintragen');
+      if (tage > 1095) return Sprache.t('Mehr als drei Jahre? Bitte prüf die Zahl noch mal');
     }
     if (startSeite === 5) {
       const budget = betragLesen($('s-budget').value);
-      if (!budget || budget <= 0) return 'Bitte dein Gesamtbudget eintragen';
+      if (!budget || budget <= 0) return Sprache.t('Bitte dein Gesamtbudget eintragen');
     }
     return null;
   }
@@ -397,7 +432,7 @@
     Waehrung.beiGelegenheitHolen(zustand.reise.waehrung).then(geholt => {
       if (geholt) zeichnen();
     });
-    melden('Los geht’s');
+    melden(Sprache.t('Los geht’s'));
   }
 
   /* Beispielreise laden. Nur aus dem Startablauf heraus erreichbar,
@@ -413,11 +448,11 @@
     formGeteilt = new Set();
     formularLeeren();
     zeichnen();
-    melden('Beispielreise geladen');
+    melden(Sprache.t('Beispielreise geladen'));
   }
 
   function beispielVerwerfen() {
-    if (!confirm('Beispielreise verwerfen und mit einer eigenen anfangen?')) return;
+    if (!confirm(Sprache.t('Beispielreise verwerfen und mit einer eigenen anfangen?'))) return;
     localStorage.removeItem('backpack-budget-v1');
     zustand = Store.laden();
     formGeteilt = new Set();
@@ -449,13 +484,13 @@
   /* Eine Kopfzeile statt drei Leisten: Reisename, darunter Stand
      der Reise und aktueller Ort, rechts Waehrung und Abgleich. */
   function zeichneKopf(p) {
-    $('kopf-reise').textContent = zustand.reise.name || 'Meine Reise';
+    $('kopf-reise').textContent = zustand.reise.name || Sprache.t('Meine Reise');
 
     let stand;
-    if (!p.eingerichtet) stand = 'Noch nicht eingerichtet';
-    else if (p.status === 'vorher') stand = 'Start am ' + datumKurz(p.start);
-    else if (p.status === 'beendet') stand = 'Reise beendet';
-    else stand = 'Tag ' + p.tagNummer + ' von ' + p.gesamtTage;
+    if (!p.eingerichtet) stand = Sprache.t('Noch nicht eingerichtet');
+    else if (p.status === 'vorher') stand = Sprache.t('Start am {datum}', { datum: datumKurz(p.start) });
+    else if (p.status === 'beendet') stand = Sprache.t('Reise beendet');
+    else stand = Sprache.t('Tag {nr} von {ganz}', { nr: p.tagNummer, ganz: p.gesamtTage });
 
     const ort = aktuellerOrt();
     $('kopf-fortschritt').textContent = ort ? stand + ' · ' + ort : stand;
@@ -510,29 +545,29 @@
 
     if (faellig) {
       $('sicherung-titel').textContent = alter === null
-        ? 'Noch nie gesichert' : 'Sicherung fällig';
+        ? Sprache.t('Noch nie gesichert') : Sprache.t('Sicherung fällig');
       /* Mit Server-Abgleich waere "liegen nur auf diesem Geraet"
          schlicht falsch - dann ist die Datei die dritte Kopie. */
       $('sicherung-text').textContent = (alter === null
-        ? 'Du hast ' + eintraege(zustand.ausgaben.length) + ', aber noch keine Sicherung. '
-        : 'Deine letzte Sicherung ist ' + tage(alter) + ' her. ') +
+        ? Sprache.t('Du hast {n}, aber noch keine Sicherung.',
+                    { n: eintraege(zustand.ausgaben.length) })
+        : Sprache.t('Deine letzte Sicherung ist {alter} her.', { alter: tage(alter) })) + ' ' +
         (Sync.eingerichtet()
-          ? 'Deine Daten liegen auf dem Handy und auf deinem Server. Eine Datei in '
-            + 'iCloud wäre die dritte Kopie – die einzige, die keins von beidem braucht.'
-          : 'Deine Daten liegen nur auf diesem Gerät. Hol dir eine Kopie und leg sie '
-            + 'in iCloud, Google Drive oder schick sie dir selbst per Mail.');
+          ? Sprache.t('Deine Daten liegen auf dem Handy und auf deinem Server. Eine Datei in iCloud wäre die dritte Kopie – die einzige, die keins von beidem braucht.')
+          : Sprache.t('Deine Daten liegen nur auf diesem Gerät. Hol dir eine Kopie und leg sie in iCloud, Google Drive oder schick sie dir selbst per Mail.'));
     }
 
     const stand = $('e-sicherung-stand');
     if (alter === null) {
       stand.textContent = zustand.ausgaben.length
-        ? 'Noch nie gesichert.' : 'Noch nichts einzutragen.';
+        ? Sprache.t('Noch nie gesichert.') : Sprache.t('Noch nichts einzutragen.');
     } else if (alter === 0) {
-      stand.textContent = 'Zuletzt gesichert: heute.';
+      stand.textContent = Sprache.t('Zuletzt gesichert: heute.');
     } else {
-      /* "vor 8 Tagen" – Dativ, deshalb nicht der tage()-Helfer. */
-      stand.textContent = 'Zuletzt gesichert: vor ' + alter +
-        (alter === 1 ? ' Tag.' : ' Tagen.');
+      /* "vor 8 Tagen" - Dativ, deshalb eine eigene Wendung und
+         nicht der tage()-Helfer. */
+      stand.textContent = Sprache.tn(alter,
+        'Zuletzt gesichert: vor {n} Tag.', 'Zuletzt gesichert: vor {n} Tagen.');
     }
   }
 
@@ -582,9 +617,9 @@
     /* Beschriftung: gestern und morgen beim Namen nennen, alles
        andere mit Datum - "Mi, 8. Okt." sagt mehr als "in 8 Tagen". */
     let label;
-    if (lage.istHeute) label = 'Heute verfügbar';
-    else if (tag === Budget.tagVerschieben(heute, -1)) label = 'Gestern';
-    else if (tag === Budget.tagVerschieben(heute, 1)) label = 'Morgen verfügbar';
+    if (lage.istHeute) label = Sprache.t('Heute verfügbar');
+    else if (tag === Budget.tagVerschieben(heute, -1)) label = Sprache.t('Gestern');
+    else if (tag === Budget.tagVerschieben(heute, 1)) label = Sprache.t('Morgen verfügbar');
     else label = datumKurz(tag, true);
     $('heute-label').textContent = label;
 
@@ -599,8 +634,9 @@
     if (lage.verfuegbar < 0) balken.classList.add('drueber');
     else if (anteilProzent > 80) balken.classList.add('warnung');
 
-    $('heute-fuss').textContent = geld(lage.ausgegeben) + ' von ' +
-      geld(lage.budget) + (lage.istKuenftig ? ' schon belegt' : ' ausgegeben');
+    $('heute-fuss').textContent = lage.istKuenftig
+      ? Sprache.t('{a} von {b} schon belegt', { a: geld(lage.ausgegeben), b: geld(lage.budget) })
+      : Sprache.t('{a} von {b} ausgegeben',   { a: geld(lage.ausgegeben), b: geld(lage.budget) });
 
     $('zurueck-heute').hidden = lage.istHeute || !heuteInReise(p);
     $('tag-zurueck').disabled = tag <= grenzen.von;
@@ -617,11 +653,11 @@
          ein Satz, der die Zahl einordnet, schon. */
       const text = lage.istVergangen
         ? (lage.verfuegbar >= 0
-            ? geld(lage.verfuegbar) + ' sind an diesem Tag übrig geblieben.'
-            : geld(-lage.verfuegbar) + ' zu viel an diesem Tag.')
+            ? Sprache.t('{geld} sind an diesem Tag übrig geblieben.', { geld: geld(lage.verfuegbar) })
+            : Sprache.t('{geld} zu viel an diesem Tag.', { geld: geld(-lage.verfuegbar) }))
         : (lage.ausgegeben > 0
-            ? geld(lage.ausgegeben) + ' sind durch laufende Buchungen schon belegt.'
-            : 'Noch nichts belegt – der volle Betrag steht zur Verfügung.');
+            ? Sprache.t('{geld} sind durch laufende Buchungen schon belegt.', { geld: geld(lage.ausgegeben) })
+            : Sprache.t('Noch nichts belegt – der volle Betrag steht zur Verfügung.'));
       rat.append(el('p', 'rat-satz' + (lage.istVergangen && lage.verfuegbar < 0 ? ' warnung' : ''), text));
     }
   }
@@ -642,15 +678,18 @@
   /* Die Saetze, die dir sagen, wie du dastehst. */
   function ratSaetze(p) {
     if (p.status === 'vorher') {
-      return [{ text: 'Deine Reise startet am ' + datumKurz(p.start) + '. Geplant sind ' +
-                geld(p.tagesbudgetPlan) + ' pro Tag.' }];
+      return [{ text: Sprache.t('Deine Reise startet am {datum}. Geplant sind {geld} pro Tag.',
+                { datum: datumKurz(p.start), geld: geld(p.tagesbudgetPlan) }) }];
     }
     if (p.status === 'beendet') {
       const rest = p.gesamtbudget - p.gesamtAusgegeben;
       return [{
-        text: 'Reise vorbei. Du hast ' + geld(p.gesamtAusgegeben) + ' von ' +
-              geld(p.gesamtbudget) + ' ausgegeben – ' +
-              (rest >= 0 ? geld(rest) + ' übrig.' : geld(-rest) + ' darüber.'),
+        text: Sprache.t('Reise vorbei. Du hast {a} von {b} ausgegeben – {schluss}', {
+          a: geld(p.gesamtAusgegeben), b: geld(p.gesamtbudget),
+          schluss: rest >= 0
+            ? Sprache.t('{geld} übrig.',  { geld: geld(rest) })
+            : Sprache.t('{geld} darüber.', { geld: geld(-rest) })
+        }),
         lob: rest >= 0, warnung: rest < 0
       }];
     }
@@ -659,40 +698,39 @@
 
     /* 1. Wie steht der heutige Tag? */
     if (p.heuteAusgegeben === 0) {
-      saetze.push({ text: 'Heute noch nichts eingetragen. Du hast ' +
-                          geld(p.heutigesBudget) + ' zur Verfügung.' });
+      saetze.push({ text: Sprache.t('Heute noch nichts eingetragen. Du hast {geld} zur Verfügung.',
+                          { geld: geld(p.heutigesBudget) }) });
     } else if (p.heuteVerfuegbar >= 0) {
-      saetze.push({ text: 'Gut unterwegs – noch ' + geld(p.heuteVerfuegbar) +
-                          ' für heute.', lob: true });
+      saetze.push({ text: Sprache.t('Gut unterwegs – noch {geld} für heute.',
+                          { geld: geld(p.heuteVerfuegbar) }), lob: true });
     } else {
-      let text = 'Heute ' + geld(-p.heuteVerfuegbar) + ' über deinem Tagesbudget.';
+      let text = Sprache.t('Heute {geld} über deinem Tagesbudget.',
+                           { geld: geld(-p.heuteVerfuegbar) });
       if (p.morgenBudget !== null) {
-        text += ' Dadurch hast du morgen nur noch ' + geld(p.morgenBudget) + '.';
+        text += ' ' + Sprache.t('Dadurch hast du morgen nur noch {geld}.',
+                                { geld: geld(p.morgenBudget) });
       }
       saetze.push({ text, warnung: true });
     }
 
     /* 2. Was heisst das fuer die ganze Reise? */
     if (p.differenzTage === null) {
-      saetze.push({ text: 'Sobald ein paar Tage eingetragen sind, siehst du hier, ' +
-                          'ob dein Geld bis zum Reiseende reicht.' });
+      saetze.push({ text: Sprache.t('Sobald ein paar Tage eingetragen sind, siehst du hier, ob dein Geld bis zum Reiseende reicht.') });
     } else if (p.differenzTage >= 2) {
       /* Nach wenigen Tagen kann der Schnitt noch sehr niedrig sein und
          die Prognose absurde Zahlen liefern. Dann lieber qualitativ. */
       saetze.push({ text: p.differenzTage > p.restTage
-        ? 'Bei deinem bisherigen Schnitt von ' + geld(p.schnitt) + ' pro Tag hast du ' +
-          'reichlich Luft – dein Geld würde weit über das Reiseende hinaus reichen.'
-        : 'Bei deinem bisherigen Schnitt von ' + geld(p.schnitt) + ' pro Tag reicht ' +
-          'dein Geld sogar ' + tage(p.differenzTage) + ' länger als geplant.',
+        ? Sprache.t('Bei deinem bisherigen Schnitt von {geld} pro Tag hast du reichlich Luft – dein Geld würde weit über das Reiseende hinaus reichen.',
+                    { geld: geld(p.schnitt) })
+        : Sprache.t('Bei deinem bisherigen Schnitt von {geld} pro Tag reicht dein Geld sogar {tage} länger als geplant.',
+                    { geld: geld(p.schnitt), tage: tage(p.differenzTage) }),
         lob: true });
     } else if (p.differenzTage <= -2) {
-      saetze.push({ text: 'Wenn du so weitermachst, ist dein Geld am ' +
-                          datumKurz(p.prognoseEnde) + ' alle – ' +
-                          tage(Math.abs(p.differenzTage)) + ' vor deinem geplanten Ende. ' +
-                          'Versuch, in den nächsten Tagen unter ' + geld(p.heutigesBudget) +
-                          ' zu bleiben.', warnung: true });
+      saetze.push({ text: Sprache.t('Wenn du so weitermachst, ist dein Geld am {datum} alle – {tage} vor deinem geplanten Ende. Versuch, in den nächsten Tagen unter {geld} zu bleiben.',
+        { datum: datumKurz(p.prognoseEnde), tage: tage(Math.abs(p.differenzTage)),
+          geld: geld(p.heutigesBudget) }), warnung: true });
     } else {
-      saetze.push({ text: 'Du liegst im Plan – dein Geld reicht bis zum Reiseende.', lob: true });
+      saetze.push({ text: Sprache.t('Du liegst im Plan – dein Geld reicht bis zum Reiseende.'), lob: true });
     }
     return saetze;
   }
@@ -718,10 +756,11 @@
       posten.type = 'button';
 
       const text = el('div');
-      text.append(el('div', 'posten-titel', a.notiz || k.name));
+      text.append(el('div', 'posten-titel', a.notiz || Sprache.t(k.name)));
       const untertitel = [];
-      if (anzahlTage > 1) untertitel.push('Anteil von ' + geld(Budget.basis(a)) + ' über ' + tage(anzahlTage));
-      else untertitel.push(k.name);
+      if (anzahlTage > 1) untertitel.push(Sprache.t('Anteil von {geld} über {tage}',
+        { geld: geld(Budget.basis(a)), tage: tage(anzahlTage) }));
+      else untertitel.push(Sprache.t(k.name));
       if (a.waehrung !== zustand.reise.waehrung) untertitel.push(geldIn(a.betrag, a.waehrung));
       text.append(el('div', 'posten-sub', untertitel.join(' · ')));
 
@@ -741,7 +780,7 @@
     Store.KATEGORIEN.forEach(k => {
       const kachel = el('button', 'kat-kachel' + (k.id === formKategorie ? ' aktiv' : ''));
       kachel.type = 'button';
-      kachel.append(el('span', 'kat-kachel-icon', k.icon), el('span', null, k.name));
+      kachel.append(el('span', 'kat-kachel-icon', k.icon), el('span', null, Sprache.t(k.name)));
       kachel.onclick = () => {
         formKategorie = k.id;
         /* Bei Unterkunft ist der Zeitraum fast immer wichtig –
@@ -814,7 +853,7 @@
     kasten.className = 'umrechnung';
     if (!kurs) {
       kasten.classList.add('unbekannt');
-      kasten.textContent = 'Kein Kurs für ' + code + ' – oben auf den Ort tippen und eintragen';
+      kasten.textContent = Sprache.t('Kein Kurs für {code} – oben auf den Ort tippen und eintragen', { code: code });
       return;
     }
     kasten.textContent = '≈ ' + geld(betrag / kurs);
@@ -830,8 +869,9 @@
     const anzahl = Budget.tageZwischen(von, bis);
     const code = formularWaehrung();
     hinweis.hidden = false;
-    hinweis.textContent = geldIn(betrag, code) + ' verteilt auf ' + tage(anzahl) + ' = ' +
-                          geldIn(betrag / anzahl, code) + ' pro Tag';
+    hinweis.textContent = Sprache.t('{ganz} verteilt auf {tage} = {proTag} pro Tag',
+      { ganz: geldIn(betrag, code), tage: tage(anzahl),
+        proTag: geldIn(betrag / anzahl, code) });
   }
 
   function formularLeeren() {
@@ -865,7 +905,7 @@
     formGeteilt = new Set(a.geteiltMit);
     zeichneFormular();
     $('f-bezahlt').value = a.bezahltVon;
-    $('f-speichern').textContent = 'Änderung speichern';
+    $('f-speichern').textContent = Sprache.t('Änderung speichern');
     $('f-abbrechen').hidden = false;
     $('f-loeschen').hidden = false;
     verteilHinweis();
@@ -885,10 +925,10 @@
       a.datum === b.datum ? b.angelegt - a.angelegt : (a.datum < b.datum ? 1 : -1));
 
     $('ausgaben-anzahl').textContent = alle.length
-      ? eintraege(alle.length) : 'Noch keine Ausgaben';
+      ? eintraege(alle.length) : Sprache.t('Noch keine Ausgaben');
 
     if (!alle.length) {
-      liste.append(el('div', 'leer', 'Trag deine erste Ausgabe auf dem Heute-Bildschirm ein.'));
+      liste.append(el('div', 'leer', Sprache.t('Trag deine erste Ausgabe auf dem Heute-Bildschirm ein.')));
       return;
     }
 
@@ -910,17 +950,18 @@
       posten.type = 'button';
 
       const text = el('div');
-      text.append(el('div', 'posten-titel', a.notiz || k.name));
+      text.append(el('div', 'posten-titel', a.notiz || Sprache.t(k.name)));
 
       const teile = [];
-      if (a.notiz) teile.push(k.name);
+      if (a.notiz) teile.push(Sprache.t(k.name));
       if (a.waehrung !== zustand.reise.waehrung) teile.push(geldIn(a.betrag, a.waehrung));
       const ortHier = a.ort || Budget.ortAmTag(listenZeitstrahl, a.datum);
       if (ortHier) teile.push(ortHier);
-      if (anzahlTage > 1) teile.push('über ' + tage(anzahlTage) + ' verteilt');
+      if (anzahlTage > 1) teile.push(Sprache.t('über {tage} verteilt', { tage: tage(anzahlTage) }));
       if (zustand.personen.length > 1) {
         teile.push(a.geteiltMit.length > 1
-          ? person(a.bezahltVon).name + ' zahlte · geteilt durch ' + a.geteiltMit.length
+          ? Sprache.t('{name} zahlte · geteilt durch {n}',
+                      { name: person(a.bezahltVon).name, n: a.geteiltMit.length })
           : person(a.bezahltVon).name);
       }
       text.append(el('div', 'posten-sub', teile.join(' · ')));
@@ -959,7 +1000,7 @@
     const ohne = zeilen.find(z => z.ort === 'Ort noch unbekannt');
     if (ohne) {
       const hinweis = el('p', 'hinweis mini',
-        'Für ' + tage(ohne.tage) + ' fehlt noch eine Unterkunft mit Stadt.');
+        Sprache.t('Für {tage} fehlt noch eine Unterkunft mit Stadt.', { tage: tage(ohne.tage) }));
       hinweis.style.margin = '0 0 6px';
       liste.append(hinweis);
     }
@@ -976,8 +1017,11 @@
       fuellung.style.width = (z.proTag / teuerster * 100) + '%';
 
       zeile.append(fuellung,
-                   el('span', 'ort-titel', z.ort),
-                   el('span', 'ort-tage', z.tage + (z.tage === 1 ? ' Tag' : ' Tage')),
+                   /* Ein echter Stadtname steht in keinem Woerterbuch
+                      und faellt unveraendert durch - uebersetzt wird nur
+                      die Platzhalter-Zeile "Ort noch unbekannt". */
+                   el('span', 'ort-titel', Sprache.t(z.ort)),
+                   el('span', 'ort-tage', tage(z.tage)),
                    el('span', 'ort-pro-tag', geld(z.proTag)));
 
       zeile.onclick = () => ortDetailOeffnen(z);
@@ -990,9 +1034,10 @@
 
   /* Eine Stadt im Detail: was pro Tag, woraus es sich zusammensetzt. */
   function ortDetailOeffnen(z) {
-    $('od-titel').textContent = z.ort;
-    $('od-pro-tag').textContent = geld(z.proTag) + ' pro Tag';
-    $('od-sub').textContent = tage(z.tage) + ' · insgesamt ' + geld(z.betrag);
+    $('od-titel').textContent = Sprache.t(z.ort);
+    $('od-pro-tag').textContent = Sprache.t('{geld} pro Tag', { geld: geld(z.proTag) });
+    $('od-sub').textContent = Sprache.t('{tage} · insgesamt {geld}',
+      { tage: tage(z.tage), geld: geld(z.betrag) });
 
     const liste = $('od-liste');
     liste.textContent = '';
@@ -1001,7 +1046,7 @@
     z.kategorien.forEach(k => {
       const zeile = el('div', 'od-kat');
       zeile.append(el('span', null, k.kategorie.icon),
-                   el('span', 'name', k.kategorie.name),
+                   el('span', 'name', Sprache.t(k.kategorie.name)),
                    el('span', 'betrag', geld(k.betrag)));
       const schiene = el('div', 'schiene');
       const fuell = el('i');
@@ -1009,7 +1054,8 @@
       schiene.append(fuell);
       zeile.append(schiene);
       zeile.append(el('div', 'anteil',
-        Math.round(k.anteil) + '% · ' + geld(k.proTag) + ' pro Tag'));
+        Sprache.t('{prozent}% · {geld} pro Tag',
+          { prozent: Math.round(k.anteil), geld: geld(k.proTag) })));
       liste.append(zeile);
     });
 
@@ -1031,7 +1077,7 @@
       zeile.append(el('span', null, Store.kategorie(r.kategorie).icon));
       const text = el('div');
       text.append(el('div', 'r-name' + (r.bezahlt ? ' bezahlt' : ''), r.name));
-      text.append(el('div', 'r-sub', r.bezahlt ? 'bezahlt' : 'noch offen'));
+      text.append(el('div', 'r-sub', r.bezahlt ? Sprache.t('bezahlt') : Sprache.t('noch offen')));
       zeile.append(text, el('div', 'posten-betrag', geld(r.betrag)));
       liste.append(zeile);
     });
@@ -1042,39 +1088,41 @@
     wert.className = 'prognose-wert';
 
     if (!p.eingerichtet) {
-      wert.textContent = 'Noch nicht eingerichtet';
-      sub.textContent = 'Trag unter Einstellungen deinen Zeitraum und dein Budget ein.';
+      wert.textContent = Sprache.t('Noch nicht eingerichtet');
+      sub.textContent = Sprache.t('Trag unter Einstellungen deinen Zeitraum und dein Budget ein.');
     } else if (p.differenzTage === null) {
-      wert.textContent = geld(p.tagesbudgetPlan) + ' pro Tag';
-      sub.textContent = 'Dein Plan: ' + geld(p.gesamtbudget) + ' über ' + tage(p.gesamtTage) + '.';
+      wert.textContent = Sprache.t('{geld} pro Tag', { geld: geld(p.tagesbudgetPlan) });
+      sub.textContent = Sprache.t('Dein Plan: {geld} über {tage}.',
+        { geld: geld(p.gesamtbudget), tage: tage(p.gesamtTage) });
     } else if (p.differenzTage >= 0) {
-      wert.textContent = 'Dein Geld reicht';
+      wert.textContent = Sprache.t('Dein Geld reicht');
       wert.classList.add('gut');
       sub.textContent = p.differenzTage > p.restTage
-        ? 'Bei ' + geld(p.schnitt) + ' pro Tag reicht es weit über dein Reiseende am ' +
-          datumKurz(p.ende) + ' hinaus.'
-        : 'Bei ' + geld(p.schnitt) + ' pro Tag reicht es bis zum ' +
-          datumKurz(p.prognoseEnde) + ' – dein Reiseende ist der ' + datumKurz(p.ende) + '.';
+        ? Sprache.t('Bei {geld} pro Tag reicht es weit über dein Reiseende am {ende} hinaus.',
+            { geld: geld(p.schnitt), ende: datumKurz(p.ende) })
+        : Sprache.t('Bei {geld} pro Tag reicht es bis zum {bis} – dein Reiseende ist der {ende}.',
+            { geld: geld(p.schnitt), bis: datumKurz(p.prognoseEnde), ende: datumKurz(p.ende) });
     } else {
-      wert.textContent = 'Es wird knapp';
+      wert.textContent = Sprache.t('Es wird knapp');
       wert.classList.add('schlecht');
-      sub.textContent = 'Bei ' + geld(p.schnitt) + ' pro Tag ist das Geld am ' +
-        datumKurz(p.prognoseEnde) + ' alle – ' + tage(Math.abs(p.differenzTage)) +
-        ' vor deinem Reiseende am ' + datumKurz(p.ende) + '.';
+      sub.textContent = Sprache.t('Bei {geld} pro Tag ist das Geld am {datum} alle – {tage} vor deinem Reiseende am {ende}.',
+        { geld: geld(p.schnitt), datum: datumKurz(p.prognoseEnde),
+          tage: tage(Math.abs(p.differenzTage)), ende: datumKurz(p.ende) });
     }
 
     const gitter = $('prognose-zahlen');
     gitter.textContent = '';
     if (!p.eingerichtet) return;
 
-    const kacheln = [['Gesamtbudget', geld(p.gesamtbudget)]];
+    const kacheln = [[Sprache.t('Gesamtbudget'), geld(p.gesamtbudget)]];
     if (p.ruecklagenSumme > 0) {
-      kacheln.push(['Zurückgelegt', '− ' + geld(p.ruecklagenSumme)]);
-      kacheln.push(['Fürs Tägliche', geld(p.alltagsbudget)]);
+      kacheln.push([Sprache.t('Zurückgelegt'), '− ' + geld(p.ruecklagenSumme)]);
+      kacheln.push([Sprache.t('Fürs Tägliche'), geld(p.alltagsbudget)]);
     }
-    kacheln.push(['Schon ausgegeben', geld(p.gesamtAusgegeben)]);
-    kacheln.push(['Übrig', geld(p.uebrig)]);
-    kacheln.push(['Schnitt bisher', p.abgeschlosseneTage > 0 ? geld(p.schnitt) + ' / Tag' : '–']);
+    kacheln.push([Sprache.t('Schon ausgegeben'), geld(p.gesamtAusgegeben)]);
+    kacheln.push([Sprache.t('Übrig'), geld(p.uebrig)]);
+    kacheln.push([Sprache.t('Schnitt bisher'),
+      p.abgeschlosseneTage > 0 ? Sprache.t('{geld} / Tag', { geld: geld(p.schnitt) }) : '–']);
 
     kacheln.forEach(([label, text]) => {
       const feld = el('div', 'zahl');
@@ -1089,7 +1137,7 @@
     const zeilen = Budget.proKategorie(zustand.ausgaben, zustand.ichBinId, zustand.ruecklagen);
 
     if (!zeilen.length) {
-      behaelter.append(el('div', 'leer', 'Sobald du etwas einträgst, siehst du hier die Aufteilung.'));
+      behaelter.append(el('div', 'leer', Sprache.t('Sobald du etwas einträgst, siehst du hier die Aufteilung.')));
       return;
     }
 
@@ -1098,7 +1146,7 @@
       const zeile = el('div', 'kat-zeile');
       zeile.append(
         el('span', null, z.kategorie.icon),
-        el('span', 'kat-name', z.kategorie.name),
+        el('span', 'kat-name', Sprache.t(z.kategorie.name)),
         el('span', 'kat-betrag', geld(z.betrag) + '  ·  ' + z.ganz + '%')
       );
       const schiene = el('div', 'kat-schiene');
@@ -1122,7 +1170,8 @@
       const links = el('div');
       links.append(el('div', 'saldo-name', s.person.name));
       links.append(el('div', 'kachel-sub',
-        'ausgelegt ' + geld(s.ausgelegt) + ' · Anteil ' + geld(s.eigenerAnteil)));
+        Sprache.t('ausgelegt {a} · Anteil {b}',
+          { a: geld(s.ausgelegt), b: geld(s.eigenerAnteil) })));
       links.append();
       zeile.append(links, el('div', 'saldo-wert ' + (s.saldo >= 0 ? 'plus' : 'minus'),
         (s.saldo >= 0 ? '+' : '−') + geld(Math.abs(s.saldo))));
@@ -1133,7 +1182,7 @@
     ausgleich.textContent = '';
     const zahlungen = Budget.ausgleich(zustand);
     if (!zahlungen.length) {
-      ausgleich.append(el('div', 'leer', 'Alles ausgeglichen – niemand schuldet jemandem etwas.'));
+      ausgleich.append(el('div', 'leer', Sprache.t('Alles ausgeglichen – niemand schuldet jemandem etwas.')));
       return;
     }
     zahlungen.forEach(z => {
@@ -1160,21 +1209,22 @@
     $('e-dauer').value = dauer > 0 ? dauer : '';
 
     if (p.ruecklagenZuHoch) {
-      $('e-ergebnis').textContent = 'Rücklagen zu hoch';
-      $('e-ergebnis-sub').textContent = 'Deine Rücklagen von ' + geld(p.ruecklagenSumme) +
-        ' verbrauchen dein ganzes Budget von ' + geld(p.gesamtbudget) +
-        '. Für den Alltag bleibt nichts übrig.';
+      $('e-ergebnis').textContent = Sprache.t('Rücklagen zu hoch');
+      $('e-ergebnis-sub').textContent = Sprache.t(
+        'Deine Rücklagen von {r} verbrauchen dein ganzes Budget von {ganz}. Für den Alltag bleibt nichts übrig.',
+        { r: geld(p.ruecklagenSumme), ganz: geld(p.gesamtbudget) });
     } else if (p.eingerichtet) {
-      $('e-ergebnis').textContent = geld(p.tagesbudgetPlan) + ' pro Tag';
+      $('e-ergebnis').textContent = Sprache.t('{geld} pro Tag', { geld: geld(p.tagesbudgetPlan) });
       $('e-ergebnis-sub').textContent = (p.ruecklagenSumme > 0
-        ? geld(p.gesamtbudget) + ' minus ' + geld(p.ruecklagenSumme) + ' Rücklagen = ' +
-          geld(p.alltagsbudget) + ', geteilt durch '
-        : geld(p.gesamtbudget) + ' geteilt durch ') +
-        tage(p.gesamtTage) + '. Die App passt diese Zahl täglich an das an, ' +
-        'was du wirklich ausgibst.';
+        ? Sprache.t('{ganz} minus {r} Rücklagen = {rest}, geteilt durch {tage}.',
+            { ganz: geld(p.gesamtbudget), r: geld(p.ruecklagenSumme),
+              rest: geld(p.alltagsbudget), tage: tage(p.gesamtTage) })
+        : Sprache.t('{ganz} geteilt durch {tage}.',
+            { ganz: geld(p.gesamtbudget), tage: tage(p.gesamtTage) })) + ' ' +
+        Sprache.t('Die App passt diese Zahl täglich an das an, was du wirklich ausgibst.');
     } else {
       $('e-ergebnis').textContent = '–';
-      $('e-ergebnis-sub').textContent = 'Trag oben Zeitraum und Budget ein.';
+      $('e-ergebnis-sub').textContent = Sprache.t('Trag oben Zeitraum und Budget ein.');
     }
 
     zeichneRuecklagenFelder();
@@ -1186,7 +1236,7 @@
       tag.append(el('span', null, pp.name));
       if (zustand.personen.length > 1) {
         const x = el('button', null, '×');
-        x.title = pp.name + ' entfernen';
+        x.title = Sprache.t('{name} entfernen', { name: pp.name });
         x.onclick = () => personEntfernen(pp.id);
         tag.append(x);
       }
@@ -1219,14 +1269,14 @@
       const haken = document.createElement('input');
       haken.type = 'checkbox';
       haken.checked = r.bezahlt;
-      haken.title = 'schon bezahlt';
+      haken.title = Sprache.t('schon bezahlt');
       haken.onchange = () => { r.bezahlt = haken.checked; speichern(); };
 
       const text = el('div');
       text.append(el('div', 'r-name' + (r.bezahlt ? ' bezahlt' : ''), r.name));
       /* Ob bezahlt, sagen schon der Haken und der Durchstrich –
          das muss hier nicht nochmal stehen und umbrechen. */
-      text.append(el('div', 'r-sub', Store.kategorie(r.kategorie).name));
+      text.append(el('div', 'r-sub', Sprache.t(Store.kategorie(r.kategorie).name)));
 
       const betrag = document.createElement('input');
       betrag.type = 'text';
@@ -1240,9 +1290,10 @@
 
       const weg = el('button', 'r-weg', '×');
       weg.type = 'button';
-      weg.title = r.name + ' entfernen';
+      weg.title = Sprache.t('{name} entfernen', { name: r.name });
       weg.onclick = () => {
-        if (!confirm('Rücklage „' + r.name + '" entfernen? Der Betrag steht dann wieder fürs Tagesbudget zur Verfügung.')) return;
+        if (!confirm(Sprache.t('Rücklage „{name}" entfernen? Der Betrag steht dann wieder fürs Tagesbudget zur Verfügung.',
+            { name: r.name }))) return;
         zustand.ruecklagen = zustand.ruecklagen.filter(x => x.id !== r.id);
         speichern();
       };
@@ -1254,7 +1305,7 @@
     const auswahl = $('e-r-kategorie');
     if (!auswahl.children.length) {
       Store.KATEGORIEN.forEach(k => {
-        const o = el('option', null, k.icon + '  ' + k.name);
+        const o = el('option', null, k.icon + '  ' + Sprache.t(k.name));
         o.value = k.id;
         auswahl.append(o);
       });
@@ -1299,7 +1350,7 @@
         if (!wert) return;
         a.ort = wert;
         speichern();
-        melden('„' + wert + '" eingetragen');
+        melden(Sprache.t('„{wert}" eingetragen', { wert: wert }));
       };
 
       zeile.append(info, feld);
@@ -1317,16 +1368,16 @@
     kasten.className = 'sicherung-stand';
 
     if (!v || v.basis !== zustand.reise.waehrung) {
-      kasten.textContent = 'Noch keine Kurse geholt.';
+      kasten.textContent = Sprache.t('Noch keine Kurse geholt.');
       return;
     }
     const anzahl = Object.keys(v.kurse || {}).length;
     if (alter === 0) {
       kasten.classList.add('ok');
-      kasten.textContent = anzahl + ' Kurse, heute geholt.';
+      kasten.textContent = Sprache.t('{n} Kurse, heute geholt.', { n: anzahl });
     } else {
       if (alter > 7) kasten.classList.add('fehler');
-      kasten.textContent = anzahl + ' Kurse, ' + tage(alter) + ' alt.';
+      kasten.textContent = Sprache.t('{n} Kurse, {alter} alt.', { n: anzahl, alter: tage(alter) });
     }
   }
 
@@ -1334,9 +1385,9 @@
     const betroffen = zustand.ausgaben.filter(
       a => a.bezahltVon === id || a.geteiltMit.includes(id)).length;
     const frage = betroffen
-      ? person(id).name + ' entfernen? ' + betroffen +
-        ' Ausgabe(n) werden dann neu aufgeteilt – die Abrechnung ändert sich.'
-      : person(id).name + ' entfernen?';
+      ? Sprache.t('{name} entfernen? {n} Ausgabe(n) werden dann neu aufgeteilt – die Abrechnung ändert sich.',
+          { name: person(id).name, n: betroffen })
+      : Sprache.t('{name} entfernen?', { name: person(id).name });
     if (!confirm(frage)) return;
 
     zustand.personen = zustand.personen.filter(p => p.id !== id);
@@ -1379,8 +1430,9 @@
     if (punkt.hidden) return;
     punkt.className = 'sync-punkt ' +
       ({ laeuft: 'laeuft', ok: 'ok', fehler: 'fehler', wartet: 'fehler' }[syncStatus] || '');
-    punkt.setAttribute('aria-label', 'Abgleich: ' + (syncMeldung || 'eingerichtet'));
-    punkt.title = syncMeldung || 'Abgleich eingerichtet';
+    punkt.setAttribute('aria-label', Sprache.t('Abgleich: {was}',
+      { was: syncMeldung || Sprache.t('eingerichtet') }));
+    punkt.title = syncMeldung || Sprache.t('Abgleich eingerichtet');
   }
 
   /* Nach einer Aenderung nicht sofort losschicken, sondern kurz
@@ -1395,15 +1447,15 @@
   async function schickenJetzt() {
     if (!Sync.eingerichtet() || syncLaeuft) return;
     syncLaeuft = true;
-    syncSetzen('laeuft', 'Wird übertragen …');
+    syncSetzen('laeuft', Sprache.t('Wird übertragen …'));
     try {
       await Sync.schicken(zustand);
       Sync.konfigSichern({ letzterSync: zustand.stand, letzterErfolg: Date.now() });
-      syncSetzen('ok', 'Gespeichert auf dem Server');
+      syncSetzen('ok', Sprache.t('Gespeichert auf dem Server'));
     } catch (e) {
       /* Kein Drama: lokal ist alles da, wir versuchen es beim
          naechsten Mal wieder. */
-      syncSetzen('wartet', 'Nicht übertragen – ' + e.message);
+      syncSetzen('wartet', Sprache.t('Nicht übertragen – {grund}', { grund: e.message }));
     } finally {
       syncLaeuft = false;
     }
@@ -1413,7 +1465,7 @@
   async function abgleichen(vomNutzer) {
     if (!Sync.eingerichtet() || syncLaeuft) return;
     syncLaeuft = true;
-    syncSetzen('laeuft', 'Wird abgeglichen …');
+    syncSetzen('laeuft', Sprache.t('Wird abgeglichen …'));
     try {
       const antwort = await Sync.holen();
       const server = antwort.leer ? null : antwort.zustand;
@@ -1424,11 +1476,11 @@
       if (!server) {
         await Sync.schicken(zustand);
         Sync.konfigSichern({ letzterSync: lokal, letzterErfolg: Date.now() });
-        syncSetzen('ok', 'Erstmalig auf den Server geschrieben');
+        syncSetzen('ok', Sprache.t('Erstmalig auf den Server geschrieben'));
 
       } else if (fremd === lokal) {
         Sync.konfigSichern({ letzterSync: lokal, letzterErfolg: Date.now() });
-        syncSetzen('ok', 'Alles auf dem gleichen Stand');
+        syncSetzen('ok', Sprache.t('Alles auf dem gleichen Stand'));
 
       } else if (lokal > letzter && fremd > letzter) {
         /* Beide Seiten haben sich seit dem letzten Abgleich
@@ -1438,12 +1490,12 @@
 
       } else if (fremd > lokal) {
         uebernehmen(server);
-        syncSetzen('ok', 'Neueren Stand vom Server geholt');
+        syncSetzen('ok', Sprache.t('Neueren Stand vom Server geholt'));
 
       } else {
         await Sync.schicken(zustand);
         Sync.konfigSichern({ letzterSync: lokal, letzterErfolg: Date.now() });
-        syncSetzen('ok', 'Server nachgezogen');
+        syncSetzen('ok', Sprache.t('Server nachgezogen'));
       }
     } catch (e) {
       syncSetzen('fehler', e.message);
@@ -1464,26 +1516,26 @@
   }
 
   function konfliktLoesen(server) {
-    const wann = t => t ? new Date(t).toLocaleString('de-DE',
+    const wann = t => t ? new Date(t).toLocaleString(Sprache.kennung(),
       { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'unbekannt';
     const frage =
-      'Auf beiden Seiten wurde etwas geändert, seit zuletzt abgeglichen wurde.\n\n' +
-      'Auf diesem Gerät: ' + eintraege((zustand.ausgaben || []).length) +
-      ', zuletzt ' + wann(zustand.stand) + '\n' +
-      'Auf dem Server:   ' + eintraege((server.ausgaben || []).length) +
-      ', zuletzt ' + wann(server.stand) + '\n\n' +
-      'OK = Server-Stand übernehmen (dieses Gerät wird überschrieben)\n' +
-      'Abbrechen = dieses Gerät behalten (Server wird überschrieben)';
+      Sprache.t('Auf beiden Seiten wurde etwas geändert, seit zuletzt abgeglichen wurde.') + '\n\n' +
+      Sprache.t('Auf diesem Gerät: {n}, zuletzt {wann}',
+        { n: eintraege((zustand.ausgaben || []).length), wann: wann(zustand.stand) }) + '\n' +
+      Sprache.t('Auf dem Server: {n}, zuletzt {wann}',
+        { n: eintraege((server.ausgaben || []).length), wann: wann(server.stand) }) + '\n\n' +
+      Sprache.t('OK = Server-Stand übernehmen (dieses Gerät wird überschrieben)') + '\n' +
+      Sprache.t('Abbrechen = dieses Gerät behalten (Server wird überschrieben)');
 
     if (confirm(frage)) {
       uebernehmen(server);
-      syncSetzen('ok', 'Server-Stand übernommen');
-      melden('Server-Stand übernommen');
+      syncSetzen('ok', Sprache.t('Server-Stand übernommen'));
+      melden(Sprache.t('Server-Stand übernommen'));
     } else {
       zustand.stand = Date.now();
       Store.sichern(zustand);
       schickenJetzt();
-      melden('Dieses Gerät behalten');
+      melden(Sprache.t('Dieses Gerät behalten'));
     }
   }
 
@@ -1497,16 +1549,17 @@
     const stand = $('e-sync-stand');
     stand.className = 'sync-stand';
     if (!an) {
-      stand.textContent = 'Nicht verbunden – deine Daten liegen nur auf diesem Gerät.';
+      stand.textContent = Sprache.t('Nicht verbunden – deine Daten liegen nur auf diesem Gerät.');
     } else if (syncStatus === 'fehler' || syncStatus === 'wartet') {
       stand.classList.add('fehler');
       stand.textContent = syncMeldung;
     } else if (k.letzterErfolg) {
       stand.classList.add('ok');
-      stand.textContent = 'Zuletzt abgeglichen: ' + new Date(k.letzterErfolg)
-        .toLocaleString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      stand.textContent = Sprache.t('Zuletzt abgeglichen: {wann}', {
+        wann: new Date(k.letzterErfolg).toLocaleString(Sprache.kennung(),
+          { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) });
     } else {
-      stand.textContent = 'Verbunden, aber noch nie abgeglichen.';
+      stand.textContent = Sprache.t('Verbunden, aber noch nie abgeglichen.');
     }
   }
 
@@ -1548,7 +1601,7 @@
     e.preventDefault();
     const betrag = betragLesen($('f-betrag').value);
     if (betrag === null || betrag <= 0) {
-      melden('Bitte einen Betrag größer als 0 eintragen');
+      melden(Sprache.t('Bitte einen Betrag größer als 0 eintragen'));
       $('f-betrag').focus();
       return;
     }
@@ -1558,7 +1611,7 @@
        holt. Eine Unterkunft ohne Stadt reisst ein Loch hinein. */
     const ortEingabe = $('f-ort').value.trim();
     if (formKategorie === 'unterkunft' && !ortEingabe) {
-      melden('Bitte die Stadt eintragen');
+      melden(Sprache.t('Bitte die Stadt eintragen'));
       $('f-unterkunft').hidden = false;
       $('f-ort').focus();
       return;
@@ -1575,7 +1628,7 @@
                : (code === basis ? 1 : Waehrung.kurs(basis, code));
 
     if (!kurs) {
-      melden('Kein Kurs für ' + code + ' – oben auf den Ort tippen');
+      melden(Sprache.t('Kein Kurs für {code} – oben auf den Ort tippen', { code: code }));
       return;
     }
 
@@ -1601,12 +1654,13 @@
 
     if (id) {
       Object.assign(zustand.ausgaben.find(a => a.id === id), daten);
-      melden('Änderung gespeichert');
+      melden(Sprache.t('Änderung gespeichert'));
     } else {
       zustand.ausgaben.push(Object.assign({ id: Store.neueId(), angelegt: Date.now() }, daten));
       melden(bis
-        ? geldIn(betrag, code) + ' auf ' + tage(Budget.tageZwischen(von, bis)) + ' verteilt'
-        : geldIn(betrag, code) + ' eingetragen');
+        ? Sprache.t('{geld} auf {tage} verteilt',
+            { geld: geldIn(betrag, code), tage: tage(Budget.tageZwischen(von, bis)) })
+        : Sprache.t('{geld} eingetragen', { geld: geldIn(betrag, code) }));
     }
     /* Nach einem Eintrag wieder auf heute - sonst traegt man ein
        und schaut weiter auf einen anderen Tag. */
@@ -1619,11 +1673,11 @@
 
   $('f-loeschen').onclick = () => {
     const id = $('f-id').value;
-    if (!id || !confirm('Diese Ausgabe wirklich löschen?')) return;
+    if (!id || !confirm(Sprache.t('Diese Ausgabe wirklich löschen?'))) return;
     zustand.ausgaben = zustand.ausgaben.filter(a => a.id !== id);
     formularLeeren();
     speichern();
-    melden('Ausgabe gelöscht');
+    melden(Sprache.t('Ausgabe gelöscht'));
   };
 
   /* --- Einstellungen: jede Änderung wird sofort übernommen --- */
@@ -1631,7 +1685,7 @@
   $('e-reise').oninput = () => {
     zustand.reise.name = $('e-reise').value;
     Store.sichern(zustand);
-    $('kopf-reise').textContent = zustand.reise.name || 'Meine Reise';
+    $('kopf-reise').textContent = zustand.reise.name || Sprache.t('Meine Reise');
   };
 
   /* Start, Ende und Dauer haengen zusammen. Aenderst du eines,
@@ -1667,9 +1721,8 @@
     const alt = zustand.reise.waehrung;
     if (neu === alt) return;
     if (zustand.ausgaben.length && !confirm(
-        'Basiswährung von ' + alt + ' auf ' + neu + ' umstellen?\n\n' +
-        'Bereits eingetragene Ausgaben behalten ihre gespeicherten Kurse und werden ' +
-        'dadurch falsch umgerechnet. Sinnvoll nur, solange die Reise noch nicht läuft.')) {
+        Sprache.t('Basiswährung von {alt} auf {neu} umstellen?', { alt: alt, neu: neu }) + '\n\n' +
+        Sprache.t('Bereits eingetragene Ausgaben behalten ihre gespeicherten Kurse und werden dadurch falsch umgerechnet. Sinnvoll nur, solange die Reise noch nicht läuft.'))) {
       $('e-waehrung').value = alt;
       return;
     }
@@ -1684,9 +1737,9 @@
   $('e-sync-verbinden').onclick = async () => {
     const adresse = Sync.adresseAufraeumen($('e-sync-adresse').value);
     const schluessel = $('e-sync-schluessel').value.trim();
-    if (!adresse || !schluessel) { melden('Adresse und Schlüssel eintragen'); return; }
+    if (!adresse || !schluessel) { melden(Sprache.t('Adresse und Schlüssel eintragen')); return; }
 
-    syncSetzen('laeuft', 'Verbindung wird geprüft …');
+    syncSetzen('laeuft', Sprache.t('Verbindung wird geprüft …'));
     try {
       /* Erst schauen, ob da ueberhaupt ein Server ist – das trennt
          einen Tippfehler in der Adresse von einem falschen
@@ -1708,12 +1761,12 @@
   $('e-sync-jetzt').onclick = () => abgleichen(true);
 
   $('e-sync-trennen').onclick = () => {
-    if (!confirm('Verbindung trennen? Deine Daten bleiben auf diesem Gerät und auf dem Server, werden aber nicht mehr abgeglichen.')) return;
+    if (!confirm(Sprache.t('Verbindung trennen? Deine Daten bleiben auf diesem Gerät und auf dem Server, werden aber nicht mehr abgeglichen.'))) return;
     Sync.konfigLoeschen();
     syncSetzen('aus', '');
     zeichneEinstellungenSync();
     zeichneSyncLeiste();
-    melden('Verbindung getrennt');
+    melden(Sprache.t('Verbindung getrennt'));
   };
 
   /* --- Blättern auf der Budgetkarte: wischen, Pfeile, Tasten --- */
@@ -1776,21 +1829,22 @@
     const offen = zustand.ausgaben.filter(
       a => a.kategorie === 'unterkunft' && !(a.ort || '').trim() && (a.notiz || '').trim());
     if (!offen.length) return;
-    if (!confirm('Bei ' + eintraege(offen.length) + ' wird die Notiz als Stadt übernommen.\n\n'
+    if (!confirm(Sprache.t('Bei {n} wird die Notiz als Stadt übernommen.',
+                           { n: eintraege(offen.length) }) + '\n\n'
                + offen.slice(0, 6).map(a => '· ' + a.notiz.trim()).join('\n')
                + (offen.length > 6 ? '\n…' : ''))) return;
     offen.forEach(a => { a.ort = a.notiz.trim(); });
     speichern();
-    melden(eintraege(offen.length) + ' übernommen');
+    melden(Sprache.t('{n} übernommen', { n: eintraege(offen.length) }));
   };
 
   $('e-kurse-holen').onclick = async () => {
-    melden('Kurse werden geholt …');
+    melden(Sprache.t('Kurse werden geholt …'));
     try {
       await Waehrung.holen(zustand.reise.waehrung);
       zeichneKursStand();
       umrechnungZeigen();
-      melden('Kurse aktualisiert');
+      melden(Sprache.t('Kurse aktualisiert'));
     } catch (e) {
       melden(e.message);
     }
@@ -1799,8 +1853,8 @@
   $('e-r-hinzu').onclick = () => {
     const name = $('e-r-name').value.trim();
     const betrag = betragLesen($('e-r-betrag').value);
-    if (!name) { melden('Gib der Rücklage einen Namen'); $('e-r-name').focus(); return; }
-    if (!betrag || betrag <= 0) { melden('Bitte einen Betrag eintragen'); $('e-r-betrag').focus(); return; }
+    if (!name) { melden(Sprache.t('Gib der Rücklage einen Namen')); $('e-r-name').focus(); return; }
+    if (!betrag || betrag <= 0) { melden(Sprache.t('Bitte einen Betrag eintragen')); $('e-r-betrag').focus(); return; }
 
     zustand.ruecklagen.push({
       id: Store.neueId(), name, betrag,
@@ -1809,7 +1863,7 @@
     $('e-r-name').value = '';
     $('e-r-betrag').value = '';
     speichern();
-    melden(geld(betrag) + ' für „' + name + '" zurückgelegt');
+    melden(Sprache.t('{geld} für „{name}" zurückgelegt', { geld: geld(betrag), name: name }));
   };
   $('e-r-betrag').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); $('e-r-hinzu').click(); }
@@ -1823,7 +1877,7 @@
     formGeteilt.add(neu.id);
     $('e-neue-person').value = '';
     speichern();
-    melden(name + ' ist dabei');
+    melden(Sprache.t('{name} ist dabei', { name: name }));
   };
   $('e-neue-person').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); $('e-person-hinzu').click(); }
@@ -1855,7 +1909,7 @@
       try {
         const datei = new File([inhalt], name, { type: typ });
         if (navigator.canShare && navigator.canShare({ files: [datei] })) {
-          await navigator.share({ files: [datei], title: 'Backpack Budget – Sicherung' });
+          await navigator.share({ files: [datei], title: Sprache.t('Backpack Budget – Sicherung') });
           erledigt = true;
           break;
         }
@@ -1879,16 +1933,14 @@
          sie abzulegen. Ohne Erklaerung steht man dann vor einer Wand
          aus geschweiften Klammern und weiss nicht weiter. */
       if (navigator.share) {
-        alert('Deine Sicherung wurde erstellt, aber dein Browser konnte das '
-            + 'Teilen-Menü nicht öffnen.\n\nDie Datei ist jetzt zu sehen. '
-            + 'Tippe auf das Teilen-Symbol und wähle „In Dateien sichern" '
-            + 'oder schick sie dir selbst zu.');
+        alert(Sprache.t('Deine Sicherung wurde erstellt, aber dein Browser konnte das Teilen-Menü nicht öffnen.') + '\n\n'
+            + Sprache.t('Die Datei ist jetzt zu sehen. Tippe auf das Teilen-Symbol und wähle „In Dateien sichern" oder schick sie dir selbst zu.'));
       }
     }
 
     zustand.letzteSicherung = Date.now();
     speichern();
-    melden(erledigt ? 'Sicherung gespeichert' : 'Sicherung erstellt');
+    melden(erledigt ? Sprache.t('Sicherung gespeichert') : Sprache.t('Sicherung erstellt'));
   }
 
   $('e-export').onclick = sicherungHolen;
@@ -1902,8 +1954,8 @@
     leser.onload = () => {
       try {
         const daten = JSON.parse(leser.result);
-        if (!daten || !Array.isArray(daten.ausgaben)) throw new Error('Format passt nicht');
-        if (!confirm('Sicherung laden? Deine aktuellen Daten werden dabei ersetzt.')) return;
+        if (!daten || !Array.isArray(daten.ausgaben)) throw new Error(Sprache.t('Format passt nicht'));
+        if (!confirm(Sprache.t('Sicherung laden? Deine aktuellen Daten werden dabei ersetzt.'))) return;
         /* Erst wegschreiben, dann normal laden – so laeuft die
            Sicherung durch dieselbe Pruefung wie alle anderen Daten. */
         Store.sichern(daten);
@@ -1915,9 +1967,9 @@
         formGeteilt = new Set();
         formularLeeren();
         zeichnen();
-        melden('Sicherung geladen');
+        melden(Sprache.t('Sicherung geladen'));
       } catch (err) {
-        melden('Datei konnte nicht gelesen werden');
+        melden(Sprache.t('Datei konnte nicht gelesen werden'));
       } finally {
         e.target.value = '';
       }
@@ -1926,16 +1978,29 @@
   };
 
   $('e-reset').onclick = () => {
-    if (!confirm('Wirklich ALLE Ausgaben und Einstellungen löschen? Das lässt sich nicht rückgängig machen.')) return;
+    if (!confirm(Sprache.t('Wirklich ALLE Ausgaben und Einstellungen löschen? Das lässt sich nicht rückgängig machen.'))) return;
     zustand = Store.startZustand();
     formGeteilt = new Set();
     Store.sichern(zustand);
     formularLeeren();
     zeichnen();
-    melden('Alles zurückgesetzt');
+    melden(Sprache.t('Alles zurückgesetzt'));
   };
 
   /* ---------- Start ---------- */
+
+  /* Zuerst die Sprache - sonst blitzt beim Start kurz Deutsch
+     auf, bevor der Rest gezeichnet wird. */
+  Sprache.markupFuellen();
+  $('e-sprache').value = Sprache.ist();
+  $('e-sprache').onchange = () => {
+    Sprache.setzen($('e-sprache').value);
+    Sprache.markupFuellen();
+    formularLeeren();
+    zeichnen();
+    zeichneSyncLeiste();
+    zeichneEinstellungenSync();
+  };
 
   formularLeeren();
   zeichnen();

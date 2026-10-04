@@ -50,7 +50,7 @@ const Store = (function () {
          stempelt danach jeden neuen Eintrag - Ort UND Waehrung
          zusammen, weil sich beides gemeinsam aendert. */
       aktuell: { ort: '', waehrung: 'EUR' },
-      personen: [{ id: ich, name: 'Ich' }],
+      personen: [{ id: ich, name: Sprache.t('Ich') }],
       ichBinId: ich,
       ausgaben: [],
       /* Geld, das fuer etwas Bestimmtes weggelegt wird und deshalb

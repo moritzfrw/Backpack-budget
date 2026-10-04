@@ -56,9 +56,15 @@ const Beispiel = (function () {
       bett: [38000, 88000],   essen: [9000, 30000],   fahrt: [6000, 28000] }
   ];
 
+  /* Die Notizen laufen durch die Uebersetzung: Wer die
+     Beispielreise auf Englisch oeffnet, soll auch englische
+     Eintraege lesen - sonst wirkt die App halb fertig. */
   const ESSEN_NOTIZEN = ['Streetfood', 'Markt', 'Frühstück', 'Nudelsuppe',
                          'Abendessen', 'Kaffee', 'Smoothie', ''];
   const SONST_NOTIZEN = ['Wäscherei', 'SIM-Karte', 'Apotheke', 'Sonnencreme', ''];
+  /* Nicht 't' nennen: In der Tagesschleife unten laeuft ein
+     Zaehler gleichen Namens und wuerde ihn ueberdecken. */
+  const notizText = (x) => x ? Sprache.t(x) : '';
 
   function zahl(w, von, bis, stufe) {
     const roh = von + w() * (bis - von);
@@ -75,7 +81,7 @@ const Beispiel = (function () {
 
     const z = Store.startZustand();
     z.reise = {
-      name: 'Südostasien',
+      name: Sprache.t('Südostasien'),
       start: start,
       ende: ende,
       gesamtbudget: 4500,
@@ -87,7 +93,7 @@ const Beispiel = (function () {
     const jetzt = STATIONEN.filter(s => s.tag <= tagHeute).pop() || STATIONEN[0];
     z.aktuell = { ort: '', waehrung: jetzt.waehrung };
     z.ruecklagen = [{
-      id: Store.neueId(), name: 'Rückflug ab Bangkok',
+      id: Store.neueId(), name: Sprache.t('Rückflug ab Bangkok'),
       betrag: 620, kategorie: 'fortbewegung', bezahlt: true
     }];
 
@@ -112,7 +118,7 @@ const Beispiel = (function () {
         betrag: zahl(w, s.bett[0], s.bett[1], 10) * s.naechte,
         waehrung: s.waehrung, kurs: s.kurs,
         kategorie: 'unterkunft', datum: anreise, bisDatum: abreise,
-        ort: s.ort, notiz: 'Hostel ' + s.ort
+        ort: s.ort, notiz: Sprache.t('Hostel {ort}', { ort: s.ort })
       });
 
       /* Die Fahrt hierher, ausser zur allerersten Station. */
@@ -121,7 +127,7 @@ const Beispiel = (function () {
           betrag: zahl(w, s.fahrt[1] * 3, s.fahrt[1] * 9, 10),
           waehrung: s.waehrung, kurs: s.kurs,
           kategorie: 'fortbewegung', datum: anreise,
-          notiz: 'Bus von ' + STATIONEN[i - 1].ort
+          notiz: Sprache.t('Bus von {ort}', { ort: STATIONEN[i - 1].ort })
         });
       }
 
@@ -137,7 +143,7 @@ const Beispiel = (function () {
             betrag: zahl(w, s.essen[0], s.essen[1], 5),
             waehrung: s.waehrung, kurs: s.kurs,
             kategorie: 'essen', datum: tag,
-            notiz: ESSEN_NOTIZEN[Math.floor(w() * ESSEN_NOTIZEN.length)]
+            notiz: notizText(ESSEN_NOTIZEN[Math.floor(w() * ESSEN_NOTIZEN.length)])
           });
         }
         if (w() > 0.55) {
@@ -152,7 +158,7 @@ const Beispiel = (function () {
             betrag: zahl(w, s.essen[1], s.essen[1] * 3, 10),
             waehrung: s.waehrung, kurs: s.kurs,
             kategorie: 'aktivitaet', datum: tag,
-            notiz: w() > 0.5 ? 'Tempel' : 'Tour'
+            notiz: w() > 0.5 ? Sprache.t('Tempel') : Sprache.t('Tour')
           });
         }
         if (w() > 0.82) {
@@ -160,7 +166,7 @@ const Beispiel = (function () {
             betrag: zahl(w, s.essen[0], s.essen[1] * 2, 5),
             waehrung: s.waehrung, kurs: s.kurs,
             kategorie: 'sonstiges', datum: tag,
-            notiz: SONST_NOTIZEN[Math.floor(w() * SONST_NOTIZEN.length)]
+            notiz: notizText(SONST_NOTIZEN[Math.floor(w() * SONST_NOTIZEN.length)])
           });
         }
       }
