@@ -58,14 +58,14 @@ const Sync = (function () {
     try {
       const antwort = await fetch(adresse + pfad,
         Object.assign({ signal: abbruch.signal, cache: 'no-store' }, optionen));
-      if (antwort.status === 401) throw new Error('Zugangsschlüssel stimmt nicht');
-      if (!antwort.ok) throw new Error('Server antwortet mit Fehler ' + antwort.status);
+      if (antwort.status === 401) throw new Error(Sprache.t('Zugangsschlüssel stimmt nicht'));
+      if (!antwort.ok) throw new Error(Sprache.t('Server antwortet mit Fehler {code}', { code: antwort.status }));
       return await antwort.json();
     } catch (e) {
-      if (e.name === 'AbortError') throw new Error('Server antwortet nicht');
+      if (e.name === 'AbortError') throw new Error(Sprache.t('Server antwortet nicht'));
       /* fetch wirft bei fehlender Verbindung einen sehr technischen
          Fehler – den uebersetzen wir. */
-      if (e instanceof TypeError) throw new Error('Server nicht erreichbar');
+      if (e instanceof TypeError) throw new Error(Sprache.t('Server nicht erreichbar'));
       throw e;
     } finally {
       clearTimeout(uhr);
@@ -76,9 +76,9 @@ const Sync = (function () {
      zum Pruefen, ob die Adresse ueberhaupt stimmt. */
   async function erreichbar(adresse) {
     const a = adresseAufraeumen(adresse);
-    if (!a) throw new Error('Keine Adresse angegeben');
+    if (!a) throw new Error(Sprache.t('Keine Adresse angegeben'));
     const antwort = await anfrage(a, '/gesundheit', { method: 'GET' });
-    if (!antwort || !antwort.ok) throw new Error('Unerwartete Antwort');
+    if (!antwort || !antwort.ok) throw new Error(Sprache.t('Unerwartete Antwort'));
     return true;
   }
 

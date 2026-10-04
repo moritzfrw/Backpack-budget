@@ -139,15 +139,15 @@ const Waehrung = (function () {
       const antwort = await fetch(DIENST + encodeURIComponent(basis), {
         signal: abbruch.signal, cache: 'no-store'
       });
-      if (!antwort.ok) throw new Error('Kursdienst antwortet mit ' + antwort.status);
+      if (!antwort.ok) throw new Error(Sprache.t('Kursdienst antwortet mit {code}', { code: antwort.status }));
       const daten = await antwort.json();
-      if (daten.result !== 'success' || !daten.rates) throw new Error('Unerwartete Antwort');
+      if (daten.result !== 'success' || !daten.rates) throw new Error(Sprache.t('Unerwartete Antwort'));
 
       vorratSichern({ basis: basis, kurse: daten.rates, geholt: Date.now() });
       return true;
     } catch (e) {
-      if (e.name === 'AbortError') throw new Error('Kursdienst antwortet nicht');
-      if (e instanceof TypeError) throw new Error('Keine Verbindung zum Kursdienst');
+      if (e.name === 'AbortError') throw new Error(Sprache.t('Kursdienst antwortet nicht'));
+      if (e instanceof TypeError) throw new Error(Sprache.t('Keine Verbindung zum Kursdienst'));
       throw e;
     } finally {
       clearTimeout(uhr);

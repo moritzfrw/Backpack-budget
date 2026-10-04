@@ -71,6 +71,7 @@ Object.assign(Sprache.EN, {
   'Bezahlt von': 'Paid by',
   'Geteilt mit': 'Split with',
   'Eintragen': 'Add',
+  'Verbunden': 'Connected',
   'Abbrechen': 'Cancel',
   'Löschen': 'Delete',
 
@@ -485,6 +486,17 @@ Object.assign(Sprache.EN, {
   'Apotheke': 'Pharmacy',
   'Sonnencreme': 'Sunscreen',
   'Tempel': 'Temple',
-  'Tour': 'Tour'
+  'Tour': 'Tour',
+
+  /* --- Fehlermeldungen aus sync.js und waehrung.js --- */
+  'Zugangsschlüssel stimmt nicht': 'Access key is wrong',
+  'Server antwortet mit Fehler {code}': 'Server responded with error {code}',
+  'Server antwortet nicht': 'Server is not responding',
+  'Server nicht erreichbar': 'Server unreachable',
+  'Keine Adresse angegeben': 'No address given',
+  'Unerwartete Antwort': 'Unexpected response',
+  'Kursdienst antwortet mit {code}': 'Rate service responded with {code}',
+  'Kursdienst antwortet nicht': 'Rate service is not responding',
+  'Keine Verbindung zum Kursdienst': 'No connection to the rate service'
 
 });

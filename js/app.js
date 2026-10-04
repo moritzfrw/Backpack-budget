@@ -12,7 +12,7 @@
   /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
      sieht, welche Fassung auf dem Handy laeuft. Bei jeder
      Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
-  const APP_VERSION = 'v20';
+  const APP_VERSION = 'v21';
 
   let zustand = Store.laden();
 
@@ -885,7 +885,7 @@
     $('f-mehr').hidden = true;
     formKategorie = 'essen';
     formGeteilt = new Set(zustand.personen.map(p => p.id));
-    $('f-speichern').textContent = 'Eintragen';
+    $('f-speichern').textContent = Sprache.t('Eintragen');
     $('f-abbrechen').hidden = true;
     $('f-loeschen').hidden = true;
     zeichneFormular();
@@ -1342,7 +1342,7 @@
          Vorschlagen statt ungefragt uebernehmen - bestaetigt wird
          durch Antippen. */
       feld.value = (a.notiz || '').trim();
-      feld.placeholder = 'Stadt';
+      feld.placeholder = Sprache.t('Stadt');
       feld.setAttribute('list', 'ort-vorschlaege');
       feld.autocomplete = 'off';
       feld.onchange = () => {
@@ -1748,7 +1748,7 @@
       Sync.konfigSichern({ adresse, schluessel, letzterSync: 0 });
       $('e-sync-schluessel').value = '';
       await abgleichen(true);
-      if (syncStatus === 'ok') melden('Verbunden');
+      if (syncStatus === 'ok') melden(Sprache.t('Verbunden'));
     } catch (e) {
       Sync.konfigLoeschen();
       syncSetzen('fehler', e.message);
