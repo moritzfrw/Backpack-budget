@@ -12,7 +12,7 @@
   /* Wird unten in den Einstellungen angezeigt, damit man ohne Raten
      sieht, welche Fassung auf dem Handy laeuft. Bei jeder
      Veroeffentlichung zusammen mit VERSION in sw.js hochzaehlen. */
-  const APP_VERSION = 'v18';
+  const APP_VERSION = 'v19';
 
   let zustand = Store.laden();
 
@@ -1941,8 +1941,18 @@
   zeichnen();
   zeichneSyncLeiste();
 
-  /* Noch keine Reise? Dann zuerst durch den Startablauf. */
-  if (!Budget.plan(zustand).eingerichtet) startZeigen();
+  /* Noch keine Reise? Dann zuerst durch den Startablauf - es sei
+     denn, die Adresse endet auf ?beispiel, dann gleich hinein in
+     die Beispielreise.
+
+     Dass das nur bei "noch nichts eingerichtet" greift, ist der
+     entscheidende Teil: Sonst wuerde ein weitergereichter Link
+     jemandem, der die App laengst benutzt, seine echte Reise
+     ueberschreiben. Wer schon eine hat, sieht einfach seine eigene. */
+  if (!Budget.plan(zustand).eingerichtet) {
+    if (/[?&]beispiel(=|&|$)/.test(location.search)) beispielLaden();
+    else startZeigen();
+  }
   zeichneEinstellungenSync();
 
   if (Sync.eingerichtet()) abgleichen(false);
